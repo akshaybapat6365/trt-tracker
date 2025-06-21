@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-const config: Config = {
+export default {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,43 +9,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#000000",
-        foreground: "#ffffff",
-        muted: {
-          DEFAULT: "#0a0a0a",
-          foreground: "#888888",
-        },
-        card: {
-          DEFAULT: "#0a0a0a",
-          foreground: "#ffffff",
-        },
-        popover: {
-          DEFAULT: "#0a0a0a",
-          foreground: "#ffffff",
-        },
-        primary: {
-          DEFAULT: "#ffffff",
-          foreground: "#000000",
-        },
-        secondary: {
-          DEFAULT: "#1a1a1a",
-          foreground: "#ffffff",
-        },
-        border: "#1a1a1a",
-        input: "#1a1a1a",
-        ring: "#333333",
-        accent: {
-          DEFAULT: "#2a2a2a",
-          foreground: "#ffffff",
+        charcoal: '#0a0a0a',
+        'charcoal-light': '#111111',
+        gold: '#FFD700',
+        amber: {
+          500: '#FF8C00',
+          600: '#FF6B00',
         },
       },
-      borderRadius: {
-        lg: "0.5rem",
-        md: "0.375rem",
-        sm: "0.25rem",
+      animation: {
+        'fade-in': 'fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        'shimmer': 'shimmer 2s infinite',
+        'spin': 'spin 0.8s linear infinite',
+        'gold-line': 'goldLine 3s infinite',
+      },
+      backdropBlur: {
+        xl: '20px',
+      },
+      boxShadow: {
+        'gold': '0 0 20px rgba(255, 215, 0, 0.1)',
+        'gold-intense': '0 0 40px rgba(255, 215, 0, 0.2)',
       },
     },
   },
   plugins: [],
-};
-export default config;
+} satisfies Config;
