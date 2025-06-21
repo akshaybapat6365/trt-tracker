@@ -17,9 +17,9 @@ export interface SyringeConfiguration {
 
 export interface UserSettings {
   protocol: Protocol;
-  weeklyDose: number; // in mg
   concentration: number; // mg/mL
   syringe: SyringeConfiguration;
+  syringeFillAmount: number; // How much to fill syringe (0-1, e.g., 0.3 for 30%)
   startDate: Date;
   reminderTime: string; // HH:MM format
   enableNotifications: boolean;

@@ -1,16 +1,16 @@
 import { Protocol, UserSettings, DoseCalculation, ProtocolSchedule } from './types';
 
 export function calculateDose(settings: UserSettings): DoseCalculation {
-  const { protocol, weeklyDose, concentration, syringe } = settings;
+  const { protocol, concentration, syringe, syringeFillAmount } = settings;
   
   // Calculate injections per week based on protocol
   const injectionsPerWeek = getInjectionsPerWeek(protocol);
   
-  // Calculate mg per injection
-  const mgPerInjection = weeklyDose / injectionsPerWeek;
+  // Calculate volume per injection based on syringe fill
+  const volumePerInjection = syringe.volume * syringeFillAmount;
   
-  // Calculate volume per injection (mL)
-  const volumePerInjection = mgPerInjection / concentration;
+  // Calculate mg per injection
+  const mgPerInjection = volumePerInjection * concentration;
   
   // Calculate units on syringe
   const unitsPerML = syringe.units / syringe.volume;
@@ -22,6 +22,11 @@ export function calculateDose(settings: UserSettings): DoseCalculation {
     injectionsPerWeek,
     mgPerInjection,
   };
+}
+
+export function calculateWeeklyDose(settings: UserSettings): number {
+  const dose = calculateDose(settings);
+  return dose.mgPerInjection * dose.injectionsPerWeek;
 }
 
 export function getInjectionsPerWeek(protocol: Protocol): number {
