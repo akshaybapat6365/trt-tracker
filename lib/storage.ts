@@ -33,7 +33,7 @@ export const storage = {
     const records = localStorage.getItem(STORAGE_KEYS.INJECTION_RECORDS);
     if (!records) return [];
     
-    return JSON.parse(records).map((record: any) => ({
+    return JSON.parse(records).map((record: InjectionRecord & { date: string }) => ({
       ...record,
       date: new Date(record.date),
     }));

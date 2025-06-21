@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InjectionRecord, Protocol, UserSettings } from '@/lib/types';
+import { InjectionRecord, UserSettings } from '@/lib/types';
 import { storage } from '@/lib/storage';
-import { rescheduleFromDate, getNextInjectionDates } from '@/lib/calculations';
 
 interface MissedDoseHandlerProps {
   missedRecord: InjectionRecord;
-  protocol: Protocol;
   settings: UserSettings;
   onComplete: () => void;
   onCancel: () => void;
@@ -15,7 +13,6 @@ interface MissedDoseHandlerProps {
 
 export default function MissedDoseHandler({
   missedRecord,
-  protocol,
   settings,
   onComplete,
   onCancel,
@@ -64,7 +61,7 @@ export default function MissedDoseHandler({
             name="reschedule"
             value="skip"
             checked={rescheduleOption === 'skip'}
-            onChange={(e) => setRescheduleOption(e.target.value as any)}
+            onChange={(e) => setRescheduleOption(e.target.value as 'skip' | 'shift' | 'maintain')}
             className="mt-1"
           />
           <div>
@@ -81,7 +78,7 @@ export default function MissedDoseHandler({
             name="reschedule"
             value="shift"
             checked={rescheduleOption === 'shift'}
-            onChange={(e) => setRescheduleOption(e.target.value as any)}
+            onChange={(e) => setRescheduleOption(e.target.value as 'skip' | 'shift' | 'maintain')}
             className="mt-1"
           />
           <div>
@@ -98,7 +95,7 @@ export default function MissedDoseHandler({
             name="reschedule"
             value="maintain"
             checked={rescheduleOption === 'maintain'}
-            onChange={(e) => setRescheduleOption(e.target.value as any)}
+            onChange={(e) => setRescheduleOption(e.target.value as 'skip' | 'shift' | 'maintain')}
             className="mt-1"
           />
           <div>

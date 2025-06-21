@@ -14,7 +14,7 @@ interface InjectionCalendarProps {
   onSettingsUpdate: (settings: UserSettings) => void;
 }
 
-export default function InjectionCalendar({ protocol, startDate, dose, settings, onSettingsUpdate }: InjectionCalendarProps) {
+export default function InjectionCalendar({ protocol, startDate, dose, settings }: InjectionCalendarProps) {
   const [records, setRecords] = useState<InjectionRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -172,7 +172,6 @@ export default function InjectionCalendar({ protocol, startDate, dose, settings,
           <div className="card max-w-md w-full m-4">
             <MissedDoseHandler
               missedRecord={selectedRecord}
-              protocol={protocol}
               settings={settings}
               onComplete={handleMissedDoseComplete}
               onCancel={() => {

@@ -2,7 +2,6 @@
 
 import React, { useMemo } from 'react';
 import { InjectionRecord } from '@/lib/types';
-import { storage } from '@/lib/storage';
 
 interface WeeklyAnalyticsProps {
   records: InjectionRecord[];

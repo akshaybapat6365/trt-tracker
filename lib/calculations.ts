@@ -39,7 +39,7 @@ export function getInjectionsPerWeek(protocol: Protocol): number {
 
 export function getNextInjectionDates(startDate: Date, protocol: Protocol, count: number = 10): Date[] {
   const dates: Date[] = [];
-  let currentDate = new Date(startDate);
+  const currentDate = new Date(startDate);
   
   const daysToAdd = getDaysToAdd(protocol);
   
