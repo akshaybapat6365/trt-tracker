@@ -13,11 +13,11 @@ export default function ProtocolSwitcher({
   currentProtocol, 
   onProtocolChange 
 }: ProtocolSwitcherProps) {
-  const protocols: Protocol[] = ['EOD', 'E2D', 'E3D'];
+  const protocols: Protocol[] = ['Daily', 'E2D', 'E3D', 'Weekly'];
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold mb-4">Injection Protocol</h2>
+    <div className="card-strong rounded-2xl">
+      <h2 className="text-2xl font-bold gradient-text mb-6">Injection Protocol</h2>
       
       <div className="space-y-3">
         {protocols.map((protocol) => {
@@ -29,26 +29,26 @@ export default function ProtocolSwitcher({
               key={protocol}
               onClick={() => onProtocolChange(protocol)}
               className={`
-                w-full p-4 rounded-md border text-left transition-all
+                w-full p-4 rounded-xl text-left transition-smooth
                 ${isActive 
-                  ? 'border-white bg-accent' 
-                  : 'border-border hover:bg-accent/50'
+                  ? 'glass-strong gradient-border' 
+                  : 'glass gradient-border-hover'
                 }
               `}
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-medium">{protocol}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h3 className="font-semibold text-lg">{protocol}</h3>
+                  <p className="text-sm text-white/70 mt-1">
                     {info.frequency}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-white/50 mt-1">
                     {info.description}
                   </p>
                 </div>
                 {isActive && (
                   <div className="text-sm">
-                    <span className="text-green-400">Active</span>
+                    <span className="gradient-text font-medium">Active</span>
                   </div>
                 )}
               </div>
@@ -57,11 +57,13 @@ export default function ProtocolSwitcher({
         })}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border">
-        <h3 className="text-sm font-medium mb-2">Protocol Comparison</h3>
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <p><strong>EOD/E2D:</strong> Most stable hormone levels, frequent injections</p>
-          <p><strong>E3D:</strong> Less frequent, slight hormone fluctuation</p>
+      <div className="mt-6 pt-6 border-t border-white/10">
+        <h3 className="text-sm font-medium mb-3 text-white/80">Protocol Comparison</h3>
+        <div className="space-y-2 text-xs text-white/60">
+          <p><strong className="text-white/80">Daily:</strong> Most stable hormone levels, requires daily commitment</p>
+          <p><strong className="text-white/80">E2D:</strong> Good balance of stability and convenience</p>
+          <p><strong className="text-white/80">E3D:</strong> Less frequent, slight hormone fluctuation</p>
+          <p><strong className="text-white/80">Weekly:</strong> Traditional approach, most convenient but less stable</p>
         </div>
       </div>
     </div>

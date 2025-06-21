@@ -1,4 +1,4 @@
-export type Protocol = 'EOD' | 'E2D' | 'E3D';
+export type Protocol = 'Daily' | 'E2D' | 'E3D' | 'Weekly';
 
 export interface InjectionRecord {
   id: string;

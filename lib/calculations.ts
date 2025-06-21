@@ -31,12 +31,14 @@ export function calculateWeeklyDose(settings: UserSettings): number {
 
 export function getInjectionsPerWeek(protocol: Protocol): number {
   switch (protocol) {
-    case 'EOD':
-      return 3.5; // Every other day averages to 3.5 per week
+    case 'Daily':
+      return 7; // Every day
     case 'E2D':
       return 3.5; // Every 2 days
     case 'E3D':
       return 2.33; // Every 3 days averages to ~2.33 per week
+    case 'Weekly':
+      return 1; // Once per week
     default:
       return 3.5;
   }
@@ -58,12 +60,14 @@ export function getNextInjectionDates(startDate: Date, protocol: Protocol, count
 
 function getDaysToAdd(protocol: Protocol): number {
   switch (protocol) {
-    case 'EOD':
-      return 2;
+    case 'Daily':
+      return 1;
     case 'E2D':
       return 2;
     case 'E3D':
       return 3;
+    case 'Weekly':
+      return 7;
     default:
       return 2;
   }
@@ -74,17 +78,21 @@ export function getProtocolInfo(protocol: Protocol): ProtocolSchedule {
   today.setHours(0, 0, 0, 0);
   
   const schedules: Record<Protocol, { frequency: string; description: string }> = {
-    EOD: {
-      frequency: 'Every Other Day',
-      description: 'Inject every 2 days for stable hormone levels',
+    Daily: {
+      frequency: 'Every Day',
+      description: 'Daily injections for the most stable hormone levels',
     },
     E2D: {
       frequency: 'Every 2 Days',
-      description: 'Same as EOD - inject every 2 days',
+      description: 'Inject every 2 days for stable levels',
     },
     E3D: {
       frequency: 'Every 3 Days',
       description: 'Inject twice per week with 3-day intervals',
+    },
+    Weekly: {
+      frequency: 'Once Per Week',
+      description: 'Traditional weekly injection protocol',
     },
   };
   
