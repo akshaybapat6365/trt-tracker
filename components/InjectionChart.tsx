@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format } from 'date-fns'
 import { InjectionRecord } from '@/lib/types'
 
@@ -19,7 +19,7 @@ export default function InjectionChart({ records }: InjectionChartProps) {
       date: format(record.date, 'MMM dd'),
       fullDate: format(record.date, 'PPP'),
       dose: record.dose,
-      site: record.site || 'Unknown',
+      notes: record.notes || '',
     }))
 
   if (chartData.length === 0) {
@@ -32,7 +32,15 @@ export default function InjectionChart({ records }: InjectionChartProps) {
   }
 
   // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface TooltipPayload {
+    value: number
+    payload: {
+      fullDate: string
+      notes: string
+    }
+  }
+  
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) => {
     if (active && payload && payload[0]) {
       return (
         <div className="bg-zinc-900/95 backdrop-blur-lg border border-zinc-800 rounded-lg p-3 shadow-xl">
@@ -40,9 +48,11 @@ export default function InjectionChart({ records }: InjectionChartProps) {
           <p className="text-xs text-amber-500 mt-1">
             Dose: {payload[0].value} mg
           </p>
-          <p className="text-xs text-zinc-400 mt-1">
-            Site: {payload[0].payload.site}
-          </p>
+          {payload[0].payload.notes && (
+            <p className="text-xs text-zinc-400 mt-1">
+              Notes: {payload[0].payload.notes}
+            </p>
+          )}
         </div>
       )
     }
