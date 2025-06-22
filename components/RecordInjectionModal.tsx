@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { InjectionRecord } from '@/lib/types';
-import { storage } from '@/lib/storage';
 import { formatDose } from '@/lib/calculations';
 import { X, Check, AlertCircle } from 'lucide-react';
 
@@ -10,7 +9,7 @@ interface RecordInjectionModalProps {
   date: Date;
   dose: number;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (record: InjectionRecord) => void;
 }
 
 export default function RecordInjectionModal({ date, dose, onClose, onComplete }: RecordInjectionModalProps) {
@@ -26,8 +25,9 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
       notes: notes || undefined,
     };
 
-    storage.saveInjectionRecord(record);
-    onComplete();
+    // Pass the record to the parent component
+    // The parent will handle saving to Edge Config
+    onComplete(record);
   };
 
   return (
