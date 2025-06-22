@@ -6,7 +6,8 @@ import DoseCalculator from '@/components/DoseCalculator';
 import MinimalProtocolSelector from '@/components/MinimalProtocolSelector';
 import RecordInjectionModal from '@/components/RecordInjectionModal';
 import ExportMenu from '@/components/ExportMenu';
-import { UserSettings, Protocol } from '@/lib/types';
+import InjectionChart from '@/components/InjectionChart';
+import { UserSettings, Protocol, InjectionRecord } from '@/lib/types';
 import { storage } from '@/lib/storage';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { Settings } from 'lucide-react';
@@ -24,6 +25,7 @@ const defaultSettings: UserSettings = {
 
 export default function Home() {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+  const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDoseCalculator, setShowDoseCalculator] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -35,6 +37,8 @@ export default function Home() {
     if (savedSettings) {
       setSettings(savedSettings);
     }
+    const savedRecords = storage.getInjectionRecords();
+    setInjectionRecords(savedRecords);
     setIsLoading(false);
   }, []);
 
@@ -69,6 +73,9 @@ export default function Home() {
   const handleRecordComplete = () => {
     setSelectedDate(null);
     setRefreshKey(prev => prev + 1);
+    // Reload injection records after a new record is saved
+    const savedRecords = storage.getInjectionRecords();
+    setInjectionRecords(savedRecords);
   };
 
   const handleProtocolStartDateChange = (date: Date) => {
@@ -167,6 +174,13 @@ export default function Home() {
             onProtocolStartDateChange={handleProtocolStartDateChange}
           />
         </div>
+        
+        {/* Injection History Chart */}
+        {injectionRecords.length > 0 && (
+          <div className="mt-8 fade-in-up" style={{ animationDelay: '0.4s' }}>
+            <InjectionChart records={injectionRecords} />
+          </div>
+        )}
       </main>
 
       {/* Dose Calculator Modal */}
