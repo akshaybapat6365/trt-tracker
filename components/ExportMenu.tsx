@@ -33,9 +33,9 @@ export default function ExportMenu({}: ExportMenuProps) {
   }, [isOpen])
 
   const handleExport = useCallback(async (type: 'png' | 'jpeg' | 'pdf') => {
-    const calendarElement = document.getElementById('calendar-container')
-    if (!calendarElement) {
-      alert('Calendar not found')
+    const trackerElement = document.getElementById('calendar-container')
+    if (!trackerElement) {
+      console.error('Tracker element not found')
       return
     }
 
@@ -43,32 +43,33 @@ export default function ExportMenu({}: ExportMenuProps) {
     try {
       const options = {
         cacheBust: true,
+        pixelRatio: window.devicePixelRatio * 2, // Crisp retina output
         backgroundColor: '#0a0a0a',
-        pixelRatio: 2, // High quality
         filter: (node: Element) => {
-          // Exclude export button and dropdowns
-          return !node.hasAttribute('data-export-button')
+          // Exclude export controls
+          return !node.hasAttribute('data-export-control')
         },
+        useCORS: true, // Handle external images
       }
 
       if (type === 'pdf') {
-        const dataUrl = await toPng(calendarElement, options)
+        const dataUrl = await toPng(trackerElement, options)
         const pdf = new jsPDF({
           orientation: 'landscape',
           unit: 'px',
-          format: [calendarElement.offsetWidth, calendarElement.offsetHeight]
+          format: [trackerElement.offsetWidth, trackerElement.offsetHeight]
         })
-        pdf.addImage(dataUrl, 'PNG', 0, 0, calendarElement.offsetWidth, calendarElement.offsetHeight)
-        pdf.save(`trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+        pdf.addImage(dataUrl, 'PNG', 0, 0, trackerElement.offsetWidth, trackerElement.offsetHeight)
+        pdf.save(`trt-snapshot-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
       } else {
         const dataUrl = type === 'png' 
-          ? await toPng(calendarElement, options)
-          : await toJpeg(calendarElement, { ...options, quality: 0.95 })
-        download(dataUrl, `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.${type}`)
+          ? await toPng(trackerElement, options)
+          : await toJpeg(trackerElement, { ...options, quality: 0.95 })
+        download(dataUrl, `trt-snapshot.${type}`)
       }
     } catch (error) {
-      console.error('Export error:', error)
-      alert('Failed to export calendar. Please try again.')
+      console.error('Export failed:', error)
+      // Silent fail - no alert to avoid disrupting UX
     } finally {
       setIsExporting(false)
       setIsOpen(false)
@@ -79,7 +80,7 @@ export default function ExportMenu({}: ExportMenuProps) {
   const handleExportPDF = () => handleExport('pdf')
 
   return (
-    <div ref={dropdownRef} className="relative" data-export-button>
+    <div ref={dropdownRef} className="relative" data-export-control>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative px-6 py-3 bg-zinc-950 border border-amber-500/30 rounded-xl
@@ -102,7 +103,7 @@ export default function ExportMenu({}: ExportMenuProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-64 transform origin-top-right transition-all duration-300 animate-slideDown">
+        <div className="absolute top-full right-0 mt-2 w-64 transform origin-top-right transition-all duration-300 animate-slideDown" data-export-control>
           <div className="bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
             
@@ -119,8 +120,25 @@ export default function ExportMenu({}: ExportMenuProps) {
                   <FileImage className="w-4 h-4 text-amber-500" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-zinc-200">Export as PNG</p>
-                  <p className="text-xs text-zinc-500">Download calendar image</p>
+                  <p className="text-sm font-medium text-zinc-200">Save as PNG</p>
+                  <p className="text-xs text-zinc-500">High-quality image</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleExport('jpeg')}
+                disabled={isExporting}
+                className="w-full group relative px-4 py-3 rounded-lg
+                         hover:bg-zinc-900/50 transition-all duration-300
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         flex items-center gap-3"
+              >
+                <div className="p-2 bg-amber-500/10 rounded-lg group-hover:bg-amber-500/20 transition-colors">
+                  <FileImage className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-zinc-200">Save as JPEG</p>
+                  <p className="text-xs text-zinc-500">Compressed image</p>
                 </div>
               </button>
               
@@ -136,8 +154,8 @@ export default function ExportMenu({}: ExportMenuProps) {
                   <FileText className="w-4 h-4 text-amber-500" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-zinc-200">Export as PDF</p>
-                  <p className="text-xs text-zinc-500">Download calendar PDF</p>
+                  <p className="text-sm font-medium text-zinc-200">Save as PDF</p>
+                  <p className="text-xs text-zinc-500">Printable document</p>
                 </div>
               </button>
             </div>
