@@ -329,55 +329,73 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of html2canvas
-      let html2canvas
+      // Dynamic import of dom-to-image-more
+      let domtoimage
       try {
-        const htmlCanvasModule = await import('html2canvas')
-        html2canvas = htmlCanvasModule.default || htmlCanvasModule
-        
-        // Verify the import was successful
-        if (typeof html2canvas !== 'function') {
-          throw new Error('html2canvas is not a function')
-        }
+        const domtoimageModule = await import('dom-to-image-more')
+        domtoimage = domtoimageModule.default || domtoimageModule
       } catch (importError) {
-        console.error('Failed to import html2canvas:', importError)
+        console.error('Failed to import dom-to-image-more:', importError)
         throw new Error('Failed to load export library. Please refresh and try again.')
       }
 
-      // Create the simplified calendar element
-      const exportElement = createExportableCalendar()
+      // First try to capture the actual calendar element
+      const calendarContainer = document.querySelector('.calendar-container')
+      let dataUrl = null
+      
+      if (calendarContainer) {
+        try {
+          // Try capturing the actual calendar with better CSS handling
+          dataUrl = await domtoimage.toPng(calendarContainer as HTMLElement, {
+            quality: 1.0,
+            bgcolor: '#1a1a1a',
+            width: (calendarContainer as HTMLElement).offsetWidth,
+            height: (calendarContainer as HTMLElement).offsetHeight,
+            style: {
+              transform: 'scale(1)',
+              transformOrigin: 'top left'
+            }
+          })
+        } catch (actualCalendarError) {
+          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
+        }
+      }
 
-      // Create a temporary container off-screen
-      const tempContainer = document.createElement('div')
-      tempContainer.style.cssText = `
-        position: fixed !important;
-        left: -9999px !important;
-        top: 0 !important;
-        z-index: -1000 !important;
-      `
-      document.body.appendChild(tempContainer)
-      tempContainer.appendChild(exportElement)
+      // If actual calendar capture failed, fall back to simplified version
+      if (!dataUrl) {
+        // Create the simplified calendar element
+        const exportElement = createExportableCalendar()
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 300))
+        // Create a temporary container off-screen
+        const tempContainer = document.createElement('div')
+        tempContainer.style.cssText = `
+          position: fixed !important;
+          left: -9999px !important;
+          top: 0 !important;
+          z-index: -1000 !important;
+        `
+        document.body.appendChild(tempContainer)
+        tempContainer.appendChild(exportElement)
 
-      const canvas = await html2canvas(exportElement, {
-        backgroundColor: '#1a1a1a',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        width: 800,
-        height: exportElement.offsetHeight
-      })
+        // Wait for render
+        await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Clean up
-      document.body.removeChild(tempContainer)
+        // Capture the simplified calendar
+        dataUrl = await domtoimage.toPng(exportElement, {
+          quality: 1.0,
+          bgcolor: '#1a1a1a',
+          width: 800,
+          height: exportElement.offsetHeight
+        })
 
+        // Clean up
+        document.body.removeChild(tempContainer)
+      }
+
+      // Download the image
       const link = document.createElement('a')
       link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
-      link.href = canvas.toDataURL('image/png', 1.0)
+      link.href = dataUrl
       link.click()
     } catch (error) {
       console.error('Export PNG error:', error)
@@ -427,19 +445,16 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of html2canvas and jsPDF
-      let html2canvas, jsPDF
+      // Dynamic import of dom-to-image-more and jsPDF
+      let domtoimage, jsPDF
       try {
-        const h2cModule = await import('html2canvas')
-        html2canvas = h2cModule.default || h2cModule
+        const domtoimageModule = await import('dom-to-image-more')
+        domtoimage = domtoimageModule.default || domtoimageModule
         
         const pdfModule = await import('jspdf')
         jsPDF = pdfModule.default || pdfModule
         
         // Verify the imports were successful
-        if (typeof html2canvas !== 'function') {
-          throw new Error('html2canvas is not a function')
-        }
         if (typeof jsPDF !== 'function') {
           throw new Error('jsPDF is not a function')
         }
@@ -448,44 +463,69 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Failed to load export libraries. Please refresh and try again.')
       }
 
-      // Create the simplified calendar element
-      const exportElement = createExportableCalendar()
+      // First try to capture the actual calendar element
+      const calendarContainer = document.querySelector('.calendar-container')
+      let dataUrl = null
+      let width = 800
+      let height = 600
+      
+      if (calendarContainer) {
+        try {
+          // Try capturing the actual calendar with better CSS handling
+          width = (calendarContainer as HTMLElement).offsetWidth
+          height = (calendarContainer as HTMLElement).offsetHeight
+          dataUrl = await domtoimage.toPng(calendarContainer as HTMLElement, {
+            quality: 1.0,
+            bgcolor: '#1a1a1a',
+            width: width,
+            height: height,
+            style: {
+              transform: 'scale(1)',
+              transformOrigin: 'top left'
+            }
+          })
+        } catch (actualCalendarError) {
+          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
+        }
+      }
 
-      // Create a temporary container off-screen
-      const tempContainer = document.createElement('div')
-      tempContainer.style.cssText = `
-        position: fixed !important;
-        left: -9999px !important;
-        top: 0 !important;
-        z-index: -1000 !important;
-      `
-      document.body.appendChild(tempContainer)
-      tempContainer.appendChild(exportElement)
+      // If actual calendar capture failed, fall back to simplified version
+      if (!dataUrl) {
+        // Create the simplified calendar element
+        const exportElement = createExportableCalendar()
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 300))
+        // Create a temporary container off-screen
+        const tempContainer = document.createElement('div')
+        tempContainer.style.cssText = `
+          position: fixed !important;
+          left: -9999px !important;
+          top: 0 !important;
+          z-index: -1000 !important;
+        `
+        document.body.appendChild(tempContainer)
+        tempContainer.appendChild(exportElement)
 
-      const canvas = await html2canvas(exportElement, {
-        backgroundColor: '#1a1a1a',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        width: 800,
-        height: exportElement.offsetHeight
-      })
+        // Wait for render
+        await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Clean up
-      document.body.removeChild(tempContainer)
+        width = 800
+        height = exportElement.offsetHeight
+        
+        // Capture the simplified calendar
+        dataUrl = await domtoimage.toPng(exportElement, {
+          quality: 1.0,
+          bgcolor: '#1a1a1a',
+          width: width,
+          height: height
+        })
 
-      const imgData = canvas.toDataURL('image/png', 1.0)
+        // Clean up
+        document.body.removeChild(tempContainer)
+      }
       
       // Calculate PDF dimensions to maintain aspect ratio
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
       const pdfWidth = 210 // A4 portrait width in mm
-      const pdfHeight = (pdfWidth * imgHeight) / imgWidth
+      const pdfHeight = (pdfWidth * height) / width
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -493,7 +533,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         format: 'a4'
       })
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
       pdf.save(`trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
     } catch (error) {
       console.error('Export PDF error:', error)
@@ -518,72 +558,88 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of html2canvas
-      let html2canvas
+      // Dynamic import of dom-to-image-more
+      let domtoimage
       try {
-        const htmlCanvasModule = await import('html2canvas')
-        html2canvas = htmlCanvasModule.default || htmlCanvasModule
-        
-        // Verify the import was successful
-        if (typeof html2canvas !== 'function') {
-          throw new Error('html2canvas is not a function')
-        }
+        const domtoimageModule = await import('dom-to-image-more')
+        domtoimage = domtoimageModule.default || domtoimageModule
       } catch (importError) {
-        console.error('Failed to import html2canvas:', importError)
+        console.error('Failed to import dom-to-image-more:', importError)
         throw new Error('Failed to load export library. Please refresh and try again.')
       }
 
-      // Create the simplified calendar element
-      const exportElement = createExportableCalendar()
+      // First try to capture the actual calendar element
+      const calendarContainer = document.querySelector('.calendar-container')
+      let blob = null
+      
+      if (calendarContainer) {
+        try {
+          // Try capturing the actual calendar with better CSS handling
+          blob = await domtoimage.toBlob(calendarContainer as HTMLElement, {
+            quality: 1.0,
+            bgcolor: '#1a1a1a',
+            width: (calendarContainer as HTMLElement).offsetWidth,
+            height: (calendarContainer as HTMLElement).offsetHeight,
+            style: {
+              transform: 'scale(1)',
+              transformOrigin: 'top left'
+            }
+          })
+        } catch (actualCalendarError) {
+          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
+        }
+      }
 
-      // Create a temporary container off-screen
-      const tempContainer = document.createElement('div')
-      tempContainer.style.cssText = `
-        position: fixed !important;
-        left: -9999px !important;
-        top: 0 !important;
-        z-index: -1000 !important;
-      `
-      document.body.appendChild(tempContainer)
-      tempContainer.appendChild(exportElement)
+      // If actual calendar capture failed, fall back to simplified version
+      if (!blob) {
+        // Create the simplified calendar element
+        const exportElement = createExportableCalendar()
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 300))
+        // Create a temporary container off-screen
+        const tempContainer = document.createElement('div')
+        tempContainer.style.cssText = `
+          position: fixed !important;
+          left: -9999px !important;
+          top: 0 !important;
+          z-index: -1000 !important;
+        `
+        document.body.appendChild(tempContainer)
+        tempContainer.appendChild(exportElement)
 
-      const canvas = await html2canvas(exportElement, {
-        backgroundColor: '#1a1a1a',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        width: 800,
-        height: exportElement.offsetHeight
-      })
+        // Wait for render
+        await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Clean up
-      document.body.removeChild(tempContainer)
+        // Capture the simplified calendar as blob
+        blob = await domtoimage.toBlob(exportElement, {
+          quality: 1.0,
+          bgcolor: '#1a1a1a',
+          width: 800,
+          height: exportElement.offsetHeight
+        })
 
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        if (!blob) return
+        // Clean up
+        document.body.removeChild(tempContainer)
+      }
 
-        // Create a temporary link to download the image first
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
-        link.href = url
-        link.click()
-        URL.revokeObjectURL(url)
+      if (!blob) {
+        throw new Error('Failed to generate image blob')
+      }
 
-        // Then open email client with text calendar in body
-        const textCalendar = createTextCalendar()
-        const subject = `TRT Calendar - ${currentProtocol}`
-        const body = `${textCalendar}\n\nNote: A calendar image has been downloaded to your device. Please attach it to this email.`
-        
-        const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        window.location.href = mailtoLink
-      }, 'image/png', 1.0)
+      // Create a temporary link to download the image first
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+
+      // Then open email client with text calendar in body
+      const textCalendar = createTextCalendar()
+      const subject = `TRT Calendar - ${currentProtocol}`
+      const body = `${textCalendar}\n\nNote: A calendar image has been downloaded to your device. Please attach it to this email.`
+      
+      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      window.location.href = mailtoLink
     } catch (error) {
       console.error('Export email error:', error)
       if (confirm('The email export failed. Would you like to copy the calendar as text instead?')) {
