@@ -22,14 +22,14 @@ async function getData(): Promise<TRTData> {
 
     // Parse dates from the stored data
     if (data.settings) {
-      data.settings.startDate = new Date(data.settings.startDate as any)
-      data.settings.protocolStartDate = new Date(data.settings.protocolStartDate as any)
+      data.settings.startDate = new Date(data.settings.startDate as unknown as string)
+      data.settings.protocolStartDate = new Date(data.settings.protocolStartDate as unknown as string)
     }
     
     if (data.records) {
       data.records = data.records.map(record => ({
         ...record,
-        date: new Date(record.date as any)
+        date: new Date(record.date as unknown as string)
       }))
     }
 

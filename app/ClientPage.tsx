@@ -32,7 +32,6 @@ interface ClientPageProps {
 export default function ClientPage({ initialData }: ClientPageProps) {
   const [settings, setSettings] = useState<UserSettings>(initialData.settings || defaultSettings);
   const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(initialData.records);
-  const [isLoading, setIsLoading] = useState(false);
   const [showDoseCalculator, setShowDoseCalculator] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -190,7 +189,8 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         <div id="calendar-container" className="card-premium p-8 fade-in-up shadow-premium-hover" style={{ animationDelay: '0.2s' }}>
           <MonthlyCalendar 
             key={refreshKey}
-            settings={settings} 
+            settings={settings}
+            records={injectionRecords}
             onDateClick={handleDateClick}
             onProtocolStartDateChange={handleProtocolStartDateChange}
           />

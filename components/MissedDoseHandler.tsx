@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { InjectionRecord, UserSettings } from '@/lib/types';
-import { storage } from '@/lib/storage';
 
 interface MissedDoseHandlerProps {
   missedRecord: InjectionRecord;
   settings: UserSettings;
-  onComplete: () => void;
+  onComplete: (updatedRecord: InjectionRecord, newSettings?: UserSettings) => void;
   onCancel: () => void;
 }
 
@@ -28,8 +27,6 @@ export default function MissedDoseHandler({
       rescheduled: true,
       notes,
     };
-    storage.saveInjectionRecord(updatedRecord);
-
     // If shifting schedule, update the start date in settings
     if (rescheduleOption === 'shift') {
       const nextDate = new Date(missedRecord.date);
@@ -39,10 +36,10 @@ export default function MissedDoseHandler({
         ...settings,
         startDate: nextDate,
       };
-      storage.saveUserSettings(newSettings);
+      onComplete(updatedRecord, newSettings);
+    } else {
+      onComplete(updatedRecord);
     }
-
-    onComplete();
   };
 
   return (

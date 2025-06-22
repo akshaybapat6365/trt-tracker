@@ -3,24 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { InjectionRecord, UserSettings } from '@/lib/types';
 import { calculateDose, formatDose, getAllInjectionDates } from '@/lib/calculations';
-import { storage } from '@/lib/storage';
 import { ChevronLeft, ChevronRight, Check, X, AlertTriangle, Calendar, Sparkles } from 'lucide-react';
 
 interface MonthlyCalendarProps {
   settings: UserSettings;
+  records?: InjectionRecord[];
   onDateClick?: (date: Date) => void;
   onProtocolStartDateChange?: (date: Date) => void;
 }
 
-export default function MonthlyCalendar({ settings, onDateClick, onProtocolStartDateChange }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ settings, records = [], onDateClick, onProtocolStartDateChange }: MonthlyCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [records, setRecords] = useState<InjectionRecord[]>([]);
   const [injectionDates, setInjectionDates] = useState<Date[]>([]);
   const [isStartDateMode, setIsStartDateMode] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    setRecords(storage.getInjectionRecords());
     // Calculate all injection dates from protocol start date to 1 year in the future
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
