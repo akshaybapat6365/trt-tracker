@@ -71,6 +71,12 @@ export default function Home() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const handleProtocolStartDateChange = (date: Date) => {
+    const newSettings = { ...settings, protocolStartDate: date };
+    handleSettingsUpdate(newSettings);
+    setRefreshKey(prev => prev + 1);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -93,7 +99,7 @@ export default function Home() {
       {/* Premium Header */}
       <header className="sticky top-0 z-40 px-4 py-6">
         <div className="container mx-auto max-w-7xl">
-          <div className="bg-charcoal/80 backdrop-blur-xl border border-zinc-900 rounded-2xl px-8 py-5 fade-in">
+          <div className="glass-card rounded-2xl px-8 py-5 fade-in shadow-premium">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-10">
                 <h1 className="text-3xl font-light tracking-tight text-zinc-100">
@@ -130,7 +136,8 @@ export default function Home() {
                   <button
                     onClick={() => setShowDoseCalculator(true)}
                     className="group relative px-6 py-3 bg-zinc-950 border border-amber-500/30 rounded-xl
-                             hover:border-amber-500/40 transition-all duration-500 overflow-hidden"
+                             hover:border-amber-500/40 transition-all duration-500 overflow-hidden
+                             hover:scale-105 transform-gpu btn-glow"
                     aria-label="Settings"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/10 to-amber-500/0 
@@ -152,11 +159,12 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 pb-12 max-w-7xl">
-        <div id="calendar-container" className="card-premium p-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div id="calendar-container" className="card-premium p-8 fade-in-up shadow-premium-hover" style={{ animationDelay: '0.2s' }}>
           <MonthlyCalendar 
             key={refreshKey}
             settings={settings} 
             onDateClick={handleDateClick}
+            onProtocolStartDateChange={handleProtocolStartDateChange}
           />
         </div>
       </main>

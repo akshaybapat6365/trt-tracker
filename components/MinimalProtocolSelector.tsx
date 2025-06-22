@@ -48,8 +48,11 @@ export default function MinimalProtocolSelector({ currentProtocol, onProtocolCha
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-zinc-950 border border-zinc-800 
-                        rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
+        <div className="absolute top-full left-0 mt-2 w-56 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 
+                        rounded-xl shadow-2xl overflow-hidden animate-slideDown z-50">
+          {/* Glass morphism overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+          
           {/* Grain texture overlay */}
           <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
                style={{

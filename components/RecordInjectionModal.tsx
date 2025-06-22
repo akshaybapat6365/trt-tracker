@@ -34,13 +34,16 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        className="absolute inset-0 bg-black/80 backdrop-blur-md animate-fadeIn"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md transform transition-all duration-500 scale-100 opacity-100">
-        <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden">
+      <div className="relative w-full max-w-md animate-springIn">
+        <div className="bg-zinc-950/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden">
+          {/* Glass morphism overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+          
           {/* Grain texture overlay */}
           <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
                style={{
@@ -65,7 +68,8 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg bg-zinc-900/50 hover:bg-zinc-900 
-                         text-zinc-500 hover:text-zinc-300 transition-all duration-300"
+                         text-zinc-500 hover:text-zinc-300 transition-all duration-300
+                         hover:scale-110 transform-gpu"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -75,7 +79,7 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
           {/* Content */}
           <div className="relative p-6">
             <div className="mb-6">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center animate-pulseGlow">
                 <p className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Dose Amount</p>
                 <p className="text-3xl font-extralight text-amber-500">{formatDose(dose, 'mg')}</p>
               </div>
@@ -91,7 +95,8 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
                 placeholder="Any notes about this injection..."
                 className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl
                          text-zinc-200 placeholder-zinc-600 focus:border-amber-500/30 
-                         focus:outline-none transition-all duration-300 resize-none"
+                         focus:outline-none transition-all duration-300 resize-none
+                         hover:bg-zinc-900/70 focus:shadow-[0_0_0_2px_rgba(255,219,26,0.1)]"
                 rows={3}
               />
             </div>
@@ -99,39 +104,32 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
             <div className="space-y-3">
               <button
                 onClick={() => recordInjection(false)}
-                className="w-full group relative p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl
-                         hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-300
-                         overflow-hidden"
+                className="w-full px-6 py-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl
+                         text-emerald-500 font-medium hover:bg-emerald-500/20 hover:border-emerald-500/40
+                         transition-all duration-500 group relative overflow-hidden
+                         hover:scale-[1.02] transform-gpu btn-glow"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 
-                                translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                
-                <span className="relative flex items-center justify-center gap-2">
-                  <Check className="w-5 h-5 text-emerald-500" />
-                  <span className="text-emerald-500 font-medium">Mark as Completed</span>
-                </span>
+                              translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                <div className="relative flex items-center justify-center gap-2">
+                  <Check className="w-5 h-5" />
+                  <span>Complete</span>
+                </div>
               </button>
               
               <button
                 onClick={() => recordInjection(true)}
-                className="w-full group relative p-4 bg-red-500/10 border border-red-500/30 rounded-xl
-                         hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-300
-                         overflow-hidden"
+                className="w-full px-6 py-4 bg-red-500/10 border border-red-500/30 rounded-xl
+                         text-red-500 font-medium hover:bg-red-500/20 hover:border-red-500/40
+                         transition-all duration-500 group relative overflow-hidden
+                         hover:scale-[1.02] transform-gpu"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/10 to-red-500/0 
-                                translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                
-                <span className="relative flex items-center justify-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-red-500 font-medium">Mark as Missed</span>
-                </span>
-              </button>
-              
-              <button
-                onClick={onClose}
-                className="w-full text-zinc-600 hover:text-zinc-400 py-3 font-medium transition-colors"
-              >
-                Cancel
+                              translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                <div className="relative flex items-center justify-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  <span>Missed</span>
+                </div>
               </button>
             </div>
           </div>

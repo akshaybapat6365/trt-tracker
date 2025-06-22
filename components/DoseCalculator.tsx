@@ -89,7 +89,10 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
   const weeklyDose = calculateWeeklyDose(localSettings);
 
   return (
-    <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden">
+    <div className="bg-zinc-950/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden animate-springIn">
+      {/* Glass morphism overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+      
       {/* Grain texture overlay */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
            style={{
