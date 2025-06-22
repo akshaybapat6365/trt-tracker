@@ -1,8 +1,8 @@
 import { InjectionRecord, UserSettings } from './types';
 
 const STORAGE_KEYS = {
-  USER_SETTINGS: 'trt_user_settings',
-  INJECTION_RECORDS: 'trt_injection_records',
+  USER_SETTINGS: 'trt-settings',
+  INJECTION_RECORDS: 'trt-injection-records',
 } as const;
 
 export const storage = {
