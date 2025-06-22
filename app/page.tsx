@@ -9,10 +9,13 @@ interface TRTData {
 
 async function getData(): Promise<TRTData> {
   try {
+    console.log('Fetching from Edge Config...')
     // Fetch data from Edge Config
     const data = await get<TRTData>('trtData')
+    console.log('Edge Config data:', data)
     
     if (!data) {
+      console.log('No data found in Edge Config')
       // Return default empty state if no data exists
       return {
         settings: null,
@@ -33,6 +36,7 @@ async function getData(): Promise<TRTData> {
       }))
     }
 
+    console.log('Parsed data:', data)
     return data
   } catch (error) {
     console.error('Failed to fetch data from Edge Config:', error)

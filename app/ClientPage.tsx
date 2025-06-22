@@ -40,6 +40,8 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   // Save data to Edge Config
   const saveToCloud = async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
     try {
+      console.log('Saving to Edge Config:', { settings: newSettings, records: newRecords });
+      
       const response = await fetch('/api/update-data', {
         method: 'POST',
         headers: {
@@ -51,12 +53,15 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         }),
       });
 
+      const data = await response.json();
+      console.log('Save response:', response.status, data);
+
       if (!response.ok) {
-        throw new Error('Failed to save data');
+        throw new Error(`Failed to save data: ${data.error || response.statusText}`);
       }
     } catch (error) {
       console.error('Failed to save to Edge Config:', error);
-      // You might want to show a user-friendly error message here
+      alert(`Failed to save data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

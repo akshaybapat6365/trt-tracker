@@ -4,8 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // The SDK's update function only works with VERCEL_ACCESS_TOKEN
 export async function POST(request: NextRequest) {
   try {
+    console.log('API: Received update request')
     // Parse the request body
     const data = await request.json()
+    console.log('API: Data to save:', data)
     
     // Validate that we have the expected data structure
     if (!data || typeof data !== 'object') {
@@ -19,16 +21,22 @@ export async function POST(request: NextRequest) {
     const edgeConfigId = 'ecfg_vc8zkswphwuzysb3785dfnxszcmo'
     const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_TOKEN
     
+    console.log('API: Token exists:', !!token)
+    console.log('API: Edge Config ID:', edgeConfigId)
+    
     if (!token) {
       console.error('VERCEL_ACCESS_TOKEN not found in environment')
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { error: 'Server configuration error - no access token' },
         { status: 500 }
       )
     }
 
     // Make API call to update Edge Config
-    const response = await fetch(`https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`, {
+    const apiUrl = `https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`
+    console.log('API: Calling Vercel API:', apiUrl)
+    
+    const response = await fetch(apiUrl, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -45,16 +53,20 @@ export async function POST(request: NextRequest) {
       })
     })
 
+    console.log('API: Vercel API response status:', response.status)
+
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Edge Config API error:', errorText)
+      console.error('Edge Config API error:', response.status, errorText)
       return NextResponse.json(
-        { error: 'Failed to save data' },
+        { error: `Failed to save data: ${errorText}` },
         { status: response.status }
       )
     }
 
-    return NextResponse.json({ success: true })
+    const result = await response.json()
+    console.log('API: Save successful:', result)
+    return NextResponse.json({ success: true, result })
   } catch (error) {
     console.error('Failed to update Edge Config:', error)
     return NextResponse.json(
