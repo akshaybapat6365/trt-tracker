@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Download, FileImage, FileText, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
-import * as htmlToImage from 'html-to-image'
+import { domToPng } from 'modern-screenshot'
 import { jsPDF } from 'jspdf'
 
 interface ExportMenuProps {
@@ -34,16 +34,12 @@ export default function ExportMenu({}: ExportMenuProps) {
   const handleExportPNG = async () => {
     setIsExporting(true)
     try {
-      const element = document.querySelector('.calendar-container')
+      const element = document.getElementById('calendar-container')
       if (!element) {
         throw new Error('Calendar element not found')
       }
 
-      const dataUrl = await htmlToImage.toPng(element as HTMLElement, {
-        quality: 1.0,
-        backgroundColor: '#1a1a1a',
-        pixelRatio: 2
-      })
+      const dataUrl = await domToPng(element)
 
       const link = document.createElement('a')
       link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
@@ -61,16 +57,12 @@ export default function ExportMenu({}: ExportMenuProps) {
   const handleExportPDF = async () => {
     setIsExporting(true)
     try {
-      const element = document.querySelector('.calendar-container')
+      const element = document.getElementById('calendar-container')
       if (!element) {
         throw new Error('Calendar element not found')
       }
 
-      const dataUrl = await htmlToImage.toPng(element as HTMLElement, {
-        quality: 1.0,
-        backgroundColor: '#1a1a1a',
-        pixelRatio: 2
-      })
+      const dataUrl = await domToPng(element)
 
       const pdf = new jsPDF({
         orientation: 'landscape',
