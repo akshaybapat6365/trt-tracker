@@ -115,12 +115,9 @@ export default function ExportMenu({}: ExportMenuProps) {
         pixelRatio: 2, // Fixed pixel ratio for consistency
         backgroundColor: '#0a0a0a',
         filter: (node: Element) => {
-          // Exclude export controls
-          const shouldInclude = !node.hasAttribute('data-export-control')
-          if (!shouldInclude) {
-            console.log('Filtering out node:', node)
-          }
-          return shouldInclude
+          // Exclude export controls and backdrop-blur elements to prevent black canvas bug
+          return !node.hasAttribute('data-export-control') &&
+                 !Array.from(node.classList || []).some(c => c.includes('backdrop-blur'))
         },
         useCORS: true, // Handle external images
         includeQueryParams: true,
@@ -181,6 +178,10 @@ export default function ExportMenu({}: ExportMenuProps) {
         const simpleOptions = {
           backgroundColor: '#0a0a0a',
           pixelRatio: 1,
+          filter: (node: Element) => {
+            return !node.hasAttribute('data-export-control') &&
+                   !Array.from(node.classList || []).some(c => c.includes('backdrop-blur'))
+          }
         }
         
         if (type === 'png') {
