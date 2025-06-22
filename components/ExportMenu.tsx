@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Download, FileImage, FileText, ChevronDown } from 'lucide-react'
 import { format, startOfMonth, getDaysInMonth } from 'date-fns'
 import { jsPDF } from 'jspdf'
+import { getAllInjectionDates, formatDose, calculateDose } from '@/lib/calculations'
+import { storage } from '@/lib/storage'
 
 interface ExportMenuProps {
   currentProtocol?: string
@@ -38,7 +40,7 @@ export default function ExportMenu({}: ExportMenuProps) {
 
     // Set dimensions
     const width = 800
-    const height = 600
+    const height = 700
     canvas.width = width
     canvas.height = height
 
@@ -48,10 +50,29 @@ export default function ExportMenu({}: ExportMenuProps) {
 
     // Get data from localStorage
     const settingsStr = localStorage.getItem('trt-settings')
-    
     const settings = settingsStr ? JSON.parse(settingsStr) : null
     
-    const protocol = settings?.protocol || 'E3D'
+    if (!settings) {
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '20px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('No TRT settings found', width / 2, height / 2)
+      return canvas
+    }
+    
+    const protocol = settings.protocol || 'E3D'
+
+    // Get injection dates and records
+    const endDate = new Date()
+    endDate.setMonth(endDate.getMonth() + 1) // Get dates for current month
+    const injectionDates = getAllInjectionDates(
+      new Date(settings.protocolStartDate || settings.startDate),
+      protocol,
+      endDate
+    )
+    
+    const records = storage.getInjectionRecords()
+    const calculation = calculateDose(settings)
 
     // Title
     ctx.fillStyle = '#ffffff'
@@ -85,6 +106,22 @@ export default function ExportMenu({}: ExportMenuProps) {
     const daysInMonth = getDaysInMonth(now)
     const startDayOfWeek = firstDay.getDay()
 
+    // Helper function to check if a date is an injection day
+    const isInjectionDay = (date: Date) => {
+      return injectionDates.some(d => 
+        d.getDate() === date.getDate() &&
+        d.getMonth() === date.getMonth() &&
+        d.getFullYear() === date.getFullYear()
+      )
+    }
+
+    // Helper function to get record for date
+    const getRecordForDate = (date: Date) => {
+      return records.find(r => 
+        new Date(r.date).toDateString() === date.toDateString()
+      )
+    }
+
     // Draw grid
     ctx.strokeStyle = '#333333'
     ctx.lineWidth = 1
@@ -101,24 +138,52 @@ export default function ExportMenu({}: ExportMenuProps) {
         const dayNum = week * 7 + day - startDayOfWeek + 1
         
         if (dayNum > 0 && dayNum <= daysInMonth) {
+          const currentDate = new Date(now.getFullYear(), now.getMonth(), dayNum)
+          const isInjection = isInjectionDay(currentDate)
+          const record = getRecordForDate(currentDate)
+          const isToday = currentDate.toDateString() === new Date().toDateString()
+          
+          // Highlight today
+          if (isToday) {
+            ctx.fillStyle = '#fbbf2433'
+            ctx.fillRect(x + 2, y + 2, cellWidth - 4, cellHeight - 4)
+          }
+          
           // Day number
-          ctx.fillStyle = '#ffffff'
+          ctx.fillStyle = isToday ? '#fbbf24' : '#ffffff'
           ctx.font = '16px Arial'
           ctx.textAlign = 'left'
           ctx.fillText(dayNum.toString(), x + 10, y + 25)
           
-          // Check if injection day (simplified logic)
-          const daysSinceStart = Math.floor((now.getTime() - new Date(settings?.protocolStartDate || now).getTime()) / (1000 * 60 * 60 * 24))
-          const protocolDays = protocol === 'Daily' ? 1 : protocol === 'E2D' ? 2 : protocol === 'E3D' ? 3 : 7
-          const isInjectionDay = (daysSinceStart + dayNum - now.getDate()) % protocolDays === 0
-          
-          if (isInjectionDay) {
-            ctx.fillStyle = '#fbbf24'
+          // Injection info
+          if (isInjection) {
+            // Background for injection day
+            if (record && record.missed) {
+              ctx.fillStyle = '#ef4444'
+            } else if (record && !record.missed) {
+              ctx.fillStyle = '#10b981'
+            } else if (currentDate < new Date()) {
+              ctx.fillStyle = '#f59e0b'
+            } else {
+              ctx.fillStyle = '#fbbf24'
+            }
+            
             ctx.fillRect(x + 5, y + cellHeight - 25, cellWidth - 10, 20)
+            
+            // Text
             ctx.fillStyle = '#000000'
             ctx.font = '12px Arial'
             ctx.textAlign = 'center'
-            ctx.fillText('Injection', x + cellWidth/2, y + cellHeight - 10)
+            
+            if (record && record.missed) {
+              ctx.fillText('Missed', x + cellWidth/2, y + cellHeight - 10)
+            } else if (record && !record.missed) {
+              ctx.fillText('Done', x + cellWidth/2, y + cellHeight - 10)
+            } else if (currentDate < new Date()) {
+              ctx.fillText('Log', x + cellWidth/2, y + cellHeight - 10)
+            } else {
+              ctx.fillText(formatDose(calculation.mgPerInjection, 'mg'), x + cellWidth/2, y + cellHeight - 10)
+            }
           }
         }
       }
@@ -128,7 +193,23 @@ export default function ExportMenu({}: ExportMenuProps) {
     ctx.fillStyle = '#888888'
     ctx.font = '12px Arial'
     ctx.textAlign = 'left'
-    ctx.fillText('Yellow = Injection Day', 50, height - 30)
+    const legendY = height - 60
+    
+    // Legend items
+    const legendItems = [
+      { color: '#fbbf24', text: 'Scheduled' },
+      { color: '#10b981', text: 'Completed' },
+      { color: '#ef4444', text: 'Missed' },
+      { color: '#f59e0b', text: 'Needs Logging' }
+    ]
+    
+    legendItems.forEach((item, index) => {
+      const legendX = 50 + (index * 180)
+      ctx.fillStyle = item.color
+      ctx.fillRect(legendX, legendY, 15, 15)
+      ctx.fillStyle = '#888888'
+      ctx.fillText(item.text, legendX + 20, legendY + 12)
+    })
 
     return canvas
   }
