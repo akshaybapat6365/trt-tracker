@@ -2,8 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Download, FileImage, FileText, Mail, ChevronDown } from 'lucide-react'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
 import { format } from 'date-fns'
 
 interface ExportMenuProps {
@@ -16,6 +14,170 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Helper function to prepare element for export
+  // Simple canvas-based export fallback - kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSimpleCanvasExport = async () => {
+    setIsExporting(true)
+    try {
+      if (typeof window === 'undefined') {
+        throw new Error('Export functionality is only available in the browser')
+      }
+
+      const calendarElement = document.getElementById('calendar-container')
+      if (!calendarElement) {
+        throw new Error('Calendar element not found')
+      }
+
+      // Create a canvas element
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('Failed to create canvas context')
+      }
+
+      // Set canvas dimensions
+      const width = calendarElement.offsetWidth
+      const height = calendarElement.offsetHeight
+      canvas.width = width * 2 // 2x scale for better quality
+      canvas.height = height * 2
+      ctx.scale(2, 2)
+
+      // Fill background
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(0, 0, width, height)
+
+      // Draw a simplified version of the calendar
+      ctx.fillStyle = '#f5f5f5'
+      ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillText('TRT Calendar Export', 20, 30)
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillText(`Protocol: ${currentProtocol}`, 20, 50)
+      ctx.fillText(`Generated: ${format(new Date(), 'PPP')}`, 20, 70)
+
+      // Draw a simple message
+      ctx.fillStyle = '#888888'
+      ctx.fillText('Note: For full calendar export, please try using the Print option', 20, 100)
+      ctx.fillText('or take a screenshot of the calendar.', 20, 120)
+
+      // Convert to image and download
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Failed to create image')
+        }
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
+        link.href = url
+        link.click()
+        URL.revokeObjectURL(url)
+      }, 'image/png', 1.0)
+    } catch (error) {
+      console.error('Simple canvas export error:', error)
+      if (error instanceof Error) {
+        alert(`Export failed: ${error.message}`)
+      } else {
+        alert('Failed to export calendar.')
+      }
+    } finally {
+      setIsExporting(false)
+      setIsOpen(false)
+    }
+  }
+
+  // Fallback export method using browser print
+  const handlePrintExport = () => {
+    try {
+      if (typeof window === 'undefined') {
+        throw new Error('Export functionality is only available in the browser')
+      }
+
+      const calendarElement = document.getElementById('calendar-container')
+      if (!calendarElement) {
+        throw new Error('Calendar element not found')
+      }
+
+      // Create a new window with just the calendar content
+      const printWindow = window.open('', '_blank', 'width=800,height=600')
+      if (!printWindow) {
+        throw new Error('Failed to open print window. Please check your popup blocker.')
+      }
+
+      // Build the print document
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>TRT Calendar - ${format(new Date(), 'yyyy-MM-dd')}</title>
+            <style>
+              @media print {
+                body { margin: 0; }
+                .no-print { display: none !important; }
+              }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+                background: white;
+                color: black;
+                padding: 20px;
+              }
+              .calendar-container {
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+              }
+              .month-header {
+                font-size: 18px;
+                font-weight: 500;
+                margin-bottom: 10px;
+              }
+              .calendar-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 4px;
+              }
+              .day-cell {
+                border: 1px solid #eee;
+                border-radius: 4px;
+                padding: 8px;
+                text-align: center;
+                min-height: 40px;
+              }
+              .injection-day {
+                background-color: #fbbf24;
+                font-weight: bold;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="calendar-container">
+              ${calendarElement.innerHTML}
+            </div>
+            <script>
+              // Automatically trigger print dialog
+              window.onload = function() {
+                window.print();
+                // Close the window after printing
+                window.onafterprint = function() {
+                  window.close();
+                };
+              };
+            </script>
+          </body>
+        </html>
+      `)
+      printWindow.document.close()
+    } catch (error) {
+      console.error('Print export error:', error)
+      if (error instanceof Error) {
+        alert(`Failed to export calendar: ${error.message}`)
+      } else {
+        alert('Failed to export calendar. Please try again.')
+      }
+    } finally {
+      setIsOpen(false)
+    }
+  }
+
   const prepareElementForExport = (originalElement: HTMLElement) => {
     // Clone the element
     const clonedElement = originalElement.cloneNode(true) as HTMLElement
@@ -134,8 +296,35 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
   const handleExportPNG = async () => {
     setIsExporting(true)
     try {
+      // Check if we're in the browser
+      if (typeof window === 'undefined') {
+        throw new Error('Export functionality is only available in the browser')
+      }
+
+      // Dynamic import of html2canvas
+      let html2canvas
+      try {
+        const htmlCanvasModule = await import('html2canvas')
+        html2canvas = htmlCanvasModule.default || htmlCanvasModule
+        
+        // Verify the import was successful
+        if (typeof html2canvas !== 'function') {
+          throw new Error('html2canvas is not a function')
+        }
+      } catch (importError) {
+        console.error('Failed to import html2canvas:', importError)
+        throw new Error('Failed to load export library. Please refresh and try again.')
+      }
+
       const calendarElement = document.getElementById('calendar-container')
-      if (!calendarElement) return
+      if (!calendarElement) {
+        throw new Error('Calendar element not found')
+      }
+
+      // Ensure the element is visible and rendered
+      if (calendarElement.offsetWidth === 0 || calendarElement.offsetHeight === 0) {
+        throw new Error('Calendar element is not visible. Please ensure the calendar is displayed.')
+      }
 
       // Use the helper function to prepare the element
       const clonedElement = prepareElementForExport(calendarElement)
@@ -152,8 +341,8 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       document.body.appendChild(tempContainer)
       tempContainer.appendChild(clonedElement)
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for render with longer delay for Vercel
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Temporarily hide the export button
       const exportButton = document.querySelector('[data-export-button]')
@@ -193,7 +382,14 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       link.click()
     } catch (error) {
       console.error('Export PNG error:', error)
-      alert('Failed to export calendar. Please try again.')
+      // Try fallback export method
+      if (confirm('The standard export failed. Would you like to try the print export instead?')) {
+        handlePrintExport()
+      } else if (error instanceof Error) {
+        alert(`Failed to export calendar: ${error.message}`)
+      } else {
+        alert('Failed to export calendar. Please try again.')
+      }
     } finally {
       setIsExporting(false)
       setIsOpen(false)
@@ -203,8 +399,41 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
   const handleExportPDF = async () => {
     setIsExporting(true)
     try {
+      // Check if we're in the browser
+      if (typeof window === 'undefined') {
+        throw new Error('Export functionality is only available in the browser')
+      }
+
+      // Dynamic import of html2canvas and jsPDF
+      let html2canvas, jsPDF
+      try {
+        const h2cModule = await import('html2canvas')
+        html2canvas = h2cModule.default || h2cModule
+        
+        const pdfModule = await import('jspdf')
+        jsPDF = pdfModule.default || pdfModule
+        
+        // Verify the imports were successful
+        if (typeof html2canvas !== 'function') {
+          throw new Error('html2canvas is not a function')
+        }
+        if (typeof jsPDF !== 'function') {
+          throw new Error('jsPDF is not a function')
+        }
+      } catch (importError) {
+        console.error('Failed to import export libraries:', importError)
+        throw new Error('Failed to load export libraries. Please refresh and try again.')
+      }
+
       const calendarElement = document.getElementById('calendar-container')
-      if (!calendarElement) return
+      if (!calendarElement) {
+        throw new Error('Calendar element not found')
+      }
+
+      // Ensure the element is visible and rendered
+      if (calendarElement.offsetWidth === 0 || calendarElement.offsetHeight === 0) {
+        throw new Error('Calendar element is not visible. Please ensure the calendar is displayed.')
+      }
 
       // Use the helper function to prepare the element
       const clonedElement = prepareElementForExport(calendarElement)
@@ -221,8 +450,8 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       document.body.appendChild(tempContainer)
       tempContainer.appendChild(clonedElement)
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for render with longer delay for Vercel
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Temporarily hide the export button
       const exportButton = document.querySelector('[data-export-button]')
@@ -274,7 +503,11 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       pdf.save(`trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
     } catch (error) {
       console.error('Export PDF error:', error)
-      alert('Failed to export calendar. Please try again.')
+      if (error instanceof Error) {
+        alert(`Failed to export calendar: ${error.message}`)
+      } else {
+        alert('Failed to export calendar. Please try again.')
+      }
     } finally {
       setIsExporting(false)
       setIsOpen(false)
@@ -284,9 +517,36 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
   const handleEmailCalendar = async () => {
     setIsExporting(true)
     try {
+      // Check if we're in the browser
+      if (typeof window === 'undefined') {
+        throw new Error('Export functionality is only available in the browser')
+      }
+
+      // Dynamic import of html2canvas
+      let html2canvas
+      try {
+        const htmlCanvasModule = await import('html2canvas')
+        html2canvas = htmlCanvasModule.default || htmlCanvasModule
+        
+        // Verify the import was successful
+        if (typeof html2canvas !== 'function') {
+          throw new Error('html2canvas is not a function')
+        }
+      } catch (importError) {
+        console.error('Failed to import html2canvas:', importError)
+        throw new Error('Failed to load export library. Please refresh and try again.')
+      }
+
       // First generate the PNG
       const calendarElement = document.getElementById('calendar-container')
-      if (!calendarElement) return
+      if (!calendarElement) {
+        throw new Error('Calendar element not found')
+      }
+
+      // Ensure the element is visible and rendered
+      if (calendarElement.offsetWidth === 0 || calendarElement.offsetHeight === 0) {
+        throw new Error('Calendar element is not visible. Please ensure the calendar is displayed.')
+      }
 
       // Use the helper function to prepare the element
       const clonedElement = prepareElementForExport(calendarElement)
@@ -303,8 +563,8 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       document.body.appendChild(tempContainer)
       tempContainer.appendChild(clonedElement)
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for render with longer delay for Vercel
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const canvas = await html2canvas(clonedElement, {
         backgroundColor: '#1a1a1a',
@@ -348,7 +608,11 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       }, 'image/png', 1.0)
     } catch (error) {
       console.error('Export email error:', error)
-      alert('Failed to export calendar. Please try again.')
+      if (error instanceof Error) {
+        alert(`Failed to export calendar: ${error.message}`)
+      } else {
+        alert('Failed to export calendar. Please try again.')
+      }
     } finally {
       setIsExporting(false)
       setIsOpen(false)
