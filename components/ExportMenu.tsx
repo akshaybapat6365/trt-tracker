@@ -21,7 +21,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       if (!calendarElement) return
 
       const canvas = await html2canvas(calendarElement, {
-        backgroundColor: '#000000',
+        backgroundColor: '#1a1a1a',
         scale: 2,
         logging: false,
         useCORS: true,
@@ -46,7 +46,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       if (!calendarElement) return
 
       const canvas = await html2canvas(calendarElement, {
-        backgroundColor: '#000000',
+        backgroundColor: '#1a1a1a',
         scale: 2,
         logging: false,
         useCORS: true,
@@ -83,7 +83,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       {/* Export Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="group relative px-6 py-3 bg-black border border-amber-500/20 rounded-xl
+        className="group relative px-6 py-3 bg-zinc-950 border border-amber-500/30 rounded-xl
                    hover:border-amber-500/40 transition-all duration-500 overflow-hidden"
         aria-label="Export calendar"
       >
@@ -104,7 +104,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
             onClick={() => setIsOpen(false)}
           />
           
@@ -112,7 +112,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
           <div className="relative w-full max-w-md transform transition-all duration-500 scale-100 opacity-100">
             <div className="bg-zinc-950 border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-500/5 overflow-hidden">
               {/* Grain texture overlay */}
-              <div className="absolute inset-0 opacity-[0.015] pointer-events-none"
+              <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
                    style={{
                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
                    }}
@@ -203,7 +203,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
               
               {/* Loading State */}
               {isExporting && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
                     <p className="text-sm text-zinc-400">Exporting...</p>

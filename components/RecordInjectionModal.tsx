@@ -34,15 +34,15 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/90 backdrop-blur-md"
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="relative w-full max-w-md transform transition-all duration-500 scale-100 opacity-100">
-        <div className="bg-zinc-950 border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-500/5 overflow-hidden">
+        <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden">
           {/* Grain texture overlay */}
-          <div className="absolute inset-0 opacity-[0.015] pointer-events-none"
+          <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
                style={{
                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
                }}
@@ -75,7 +75,7 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
           {/* Content */}
           <div className="relative p-6">
             <div className="mb-6">
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 text-center">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center">
                 <p className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Dose Amount</p>
                 <p className="text-3xl font-extralight text-amber-500">{formatDose(dose, 'mg')}</p>
               </div>

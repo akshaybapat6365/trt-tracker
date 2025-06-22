@@ -21,6 +21,7 @@ export interface UserSettings {
   syringe: SyringeConfiguration;
   syringeFillAmount: number; // How much to fill syringe (0-1, e.g., 0.3 for 30%)
   startDate: Date;
+  protocolStartDate: Date; // When the user started their TRT protocol
   reminderTime: string; // HH:MM format
   enableNotifications: boolean;
 }

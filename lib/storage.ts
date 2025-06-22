@@ -17,6 +17,7 @@ export const storage = {
     return {
       ...parsed,
       startDate: new Date(parsed.startDate),
+      protocolStartDate: parsed.protocolStartDate ? new Date(parsed.protocolStartDate) : new Date(parsed.startDate),
     };
   },
 

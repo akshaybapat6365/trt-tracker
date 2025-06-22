@@ -17,6 +17,7 @@ const defaultSettings: UserSettings = {
   syringe: { volume: 1, units: 100, deadSpace: 0.05 },
   syringeFillAmount: 0.3,
   startDate: new Date(),
+  protocolStartDate: new Date(),
   reminderTime: '08:00',
   enableNotifications: true,
 };
@@ -72,7 +73,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="loading-premium" />
       </div>
     );
@@ -82,7 +83,7 @@ export default function Home() {
   const weeklyDose = calculateWeeklyDose(settings);
 
   return (
-    <div className="min-h-screen bg-black relative">
+    <div className="min-h-screen bg-zinc-950 relative">
       {/* Grain texture overlay */}
       <div className="grain-overlay" />
       
@@ -128,7 +129,7 @@ export default function Home() {
                   
                   <button
                     onClick={() => setShowDoseCalculator(true)}
-                    className="group relative px-6 py-3 bg-black border border-amber-500/20 rounded-xl
+                    className="group relative px-6 py-3 bg-zinc-950 border border-amber-500/30 rounded-xl
                              hover:border-amber-500/40 transition-all duration-500 overflow-hidden"
                     aria-label="Settings"
                   >

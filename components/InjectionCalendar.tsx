@@ -135,7 +135,7 @@ export default function InjectionCalendar({ protocol, startDate, dose, settings 
       </div>
 
       {showRecordModal && selectedDate && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="card max-w-md w-full m-4">
             <h3 className="text-lg font-semibold mb-4">
               Record Injection - {selectedDate.toLocaleDateString()}
@@ -168,7 +168,7 @@ export default function InjectionCalendar({ protocol, startDate, dose, settings 
       )}
 
       {showMissedDoseHandler && selectedRecord && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="card max-w-md w-full m-4">
             <MissedDoseHandler
               missedRecord={selectedRecord}

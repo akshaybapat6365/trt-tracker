@@ -89,9 +89,9 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
   const weeklyDose = calculateWeeklyDose(localSettings);
 
   return (
-    <div className="bg-zinc-950 border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-500/5 overflow-hidden">
+    <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/10 overflow-hidden">
       {/* Grain texture overlay */}
-      <div className="absolute inset-0 opacity-[0.015] pointer-events-none"
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
            style={{
              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
            }}
@@ -126,7 +126,7 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
                 ...localSettings,
                 concentration: parseFloat(e.target.value)
               })}
-              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl
+              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
                        text-zinc-200 focus:border-amber-500/30 focus:outline-none
                        transition-all duration-300"
             >
@@ -150,7 +150,7 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
                   setLocalSettings({ ...localSettings, syringe });
                 }
               }}
-              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl
+              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
                        text-zinc-200 focus:border-amber-500/30 focus:outline-none
                        transition-all duration-300"
             >
@@ -171,7 +171,7 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
               value={fillInput}
               onChange={(e) => handleFillChange(e.target.value)}
               placeholder="e.g., 3/10 or 30% or 0.3ml"
-              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl
+              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
                        text-zinc-200 placeholder-zinc-600 focus:border-amber-500/30 
                        focus:outline-none transition-all duration-300"
             />
@@ -180,12 +180,32 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
             </p>
           </div>
 
+          <div className="space-y-2">
+            <label className="block text-xs uppercase tracking-wider text-zinc-500">
+              Protocol Start Date
+            </label>
+            <input
+              type="date"
+              value={localSettings.protocolStartDate ? localSettings.protocolStartDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setLocalSettings({
+                ...localSettings,
+                protocolStartDate: e.target.value ? new Date(e.target.value) : new Date()
+              })}
+              className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
+                       text-zinc-200 focus:border-amber-500/30 focus:outline-none
+                       transition-all duration-300"
+            />
+            <p className="text-xs text-zinc-600">
+              When did you start your TRT protocol? This helps track all past injections.
+            </p>
+          </div>
+
           <div className="pt-6 border-t border-zinc-900">
             <h3 className="text-sm uppercase tracking-wider text-zinc-500 mb-4">
               Calculated Doses
             </h3>
             <div className="space-y-4">
-              <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl space-y-3">
+              <div className="p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-zinc-500">Per Injection</span>
                   <span className="text-lg font-light text-amber-500">
@@ -202,7 +222,7 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
                 </div>
               </div>
               
-              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-zinc-500">Weekly Total</span>
                   <span className="text-lg font-light text-amber-500">

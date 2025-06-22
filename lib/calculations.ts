@@ -140,3 +140,48 @@ export function rescheduleFromDate(
   
   return getNextInjectionDates(startDate, protocol, count);
 }
+
+export function getAllInjectionDates(
+  protocolStartDate: Date, 
+  protocol: Protocol, 
+  endDate: Date = new Date()
+): Date[] {
+  const dates: Date[] = [];
+  const currentDate = new Date(protocolStartDate);
+  const daysToAdd = getDaysToAdd(protocol);
+  
+  // Calculate all injection dates from protocol start to end date
+  while (currentDate <= endDate) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + daysToAdd);
+  }
+  
+  return dates;
+}
+
+export function getPastInjectionDates(
+  protocolStartDate: Date,
+  protocol: Protocol
+): Date[] {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // Include today
+  return getAllInjectionDates(protocolStartDate, protocol, today);
+}
+
+export function getFutureInjectionDates(
+  protocolStartDate: Date,
+  protocol: Protocol,
+  count: number = 10
+): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Get all dates including past and future
+  const allDates = getAllInjectionDates(protocolStartDate, protocol, new Date(today.getTime() + (365 * 24 * 60 * 60 * 1000)));
+  
+  // Filter to get only future dates
+  const futureDates = allDates.filter(date => date > today);
+  
+  // Return the requested count
+  return futureDates.slice(0, count);
+}
