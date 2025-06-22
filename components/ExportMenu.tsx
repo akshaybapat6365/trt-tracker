@@ -19,7 +19,7 @@ export default function ExportMenu({}: ExportMenuProps) {
   // Test function to verify html-to-image works
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // @ts-ignore
+      // @ts-expect-error - Adding test function to window for debugging
       window.testExport = async () => {
         console.log('Running test export...')
         const el = document.getElementById('calendar-container')
