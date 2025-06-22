@@ -2,22 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Download, FileImage, FileText, ChevronDown } from 'lucide-react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns'
-import { domToPng } from 'modern-screenshot'
+import { format, startOfMonth, getDaysInMonth } from 'date-fns'
 import { jsPDF } from 'jspdf'
 
 interface ExportMenuProps {
   currentProtocol?: string
-}
-
-interface StoredData {
-  injections: Array<{
-    date: string
-    dose: string
-    time: string
-    notes: string
-  }>
-  selectedDays: string[]
 }
 
 export default function ExportMenu({}: ExportMenuProps) {
@@ -41,242 +30,128 @@ export default function ExportMenu({}: ExportMenuProps) {
     }
   }, [isOpen])
 
-  const createSimpleCalendarHTML = () => {
-    // Get current date and stored data
-    const now = new Date()
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
-    const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
-    
+  const drawCalendarOnCanvas = () => {
+    // Create canvas
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas not supported')
+
+    // Set dimensions
+    const width = 800
+    const height = 600
+    canvas.width = width
+    canvas.height = height
+
+    // Fill background
+    ctx.fillStyle = '#0a0a0a'
+    ctx.fillRect(0, 0, width, height)
+
     // Get data from localStorage
-    const storedData = localStorage.getItem('trtData')
-    const data: StoredData = storedData ? JSON.parse(storedData) : { injections: [], selectedDays: [] }
+    const settingsStr = localStorage.getItem('trt-settings')
     
-    // Create injection map for quick lookup
-    const injectionMap = new Map()
-    data.injections.forEach(injection => {
-      injectionMap.set(injection.date, injection)
+    const settings = settingsStr ? JSON.parse(settingsStr) : null
+    
+    const protocol = settings?.protocol || 'E3D'
+
+    // Title
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '24px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText(`TRT Tracker - ${protocol}`, width / 2, 40)
+
+    // Month
+    const now = new Date()
+    const monthYear = format(now, 'MMMM yyyy')
+    ctx.font = '18px Arial'
+    ctx.fillText(monthYear, width / 2, 80)
+
+    // Calendar grid
+    const cellWidth = 100
+    const cellHeight = 70
+    const startX = 50
+    const startY = 120
+    
+    // Day headers
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    ctx.font = '14px Arial'
+    ctx.fillStyle = '#888888'
+    days.forEach((day, i) => {
+      ctx.textAlign = 'center'
+      ctx.fillText(day, startX + (i * cellWidth) + cellWidth/2, startY - 10)
     })
 
-    // Build HTML
-    let html = `
-      <div style="
-        width: 800px;
-        padding: 40px;
-        background-color: #0a0a0a;
-        color: #ffffff;
-        font-family: Arial, sans-serif;
-      ">
-        <h1 style="
-          font-size: 24px;
-          font-weight: bold;
-          text-align: center;
-          margin-bottom: 30px;
-          color: #f59e0b;
-        ">
-          TRT Calendar - ${format(now, 'MMMM yyyy')}
-        </h1>
+    // Calendar days
+    const firstDay = startOfMonth(now)
+    const daysInMonth = getDaysInMonth(now)
+    const startDayOfWeek = firstDay.getDay()
+
+    // Draw grid
+    ctx.strokeStyle = '#333333'
+    ctx.lineWidth = 1
+    
+    for (let week = 0; week < 6; week++) {
+      for (let day = 0; day < 7; day++) {
+        const x = startX + (day * cellWidth)
+        const y = startY + (week * cellHeight)
         
-        <table style="
-          width: 100%;
-          border-collapse: collapse;
-          background-color: #18181b;
-          border: 1px solid #3f3f46;
-        ">
-          <thead>
-            <tr>
-    `
-
-    // Add day headers
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    dayNames.forEach(day => {
-      html += `
-        <th style="
-          padding: 12px;
-          text-align: center;
-          font-size: 14px;
-          font-weight: normal;
-          color: #a1a1aa;
-          border-bottom: 1px solid #3f3f46;
-        ">${day}</th>
-      `
-    })
-
-    html += `
-          </tr>
-        </thead>
-        <tbody>
-    `
-
-    // Add calendar days
-    let weekRow = '<tr>'
-    const firstDayOfWeek = getDay(monthStart)
-    
-    // Add empty cells for days before month start
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      weekRow += '<td style="padding: 8px; border: 1px solid #3f3f46;"></td>'
-    }
-
-    days.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd')
-      const injection = injectionMap.get(dateStr)
-      const isSelected = data.selectedDays.includes(String(day.getDate()))
-      const dayOfWeek = getDay(day)
-
-      let cellStyle = `
-        padding: 8px;
-        border: 1px solid #3f3f46;
-        text-align: center;
-        vertical-align: top;
-        height: 80px;
-        position: relative;
-      `
-
-      if (injection) {
-        cellStyle += `background-color: #1e293b;`
-      } else if (isSelected) {
-        cellStyle += `background-color: #27272a;`
-      }
-
-      weekRow += `<td style="${cellStyle}">`
-      
-      // Day number
-      weekRow += `<div style="
-        font-size: 14px;
-        font-weight: ${injection ? 'bold' : 'normal'};
-        color: ${injection ? '#f59e0b' : '#ffffff'};
-        margin-bottom: 4px;
-      ">${day.getDate()}</div>`
-
-      // Injection info
-      if (injection) {
-        weekRow += `
-          <div style="
-            font-size: 11px;
-            color: #fbbf24;
-            margin-top: 4px;
-          ">
-            ${injection.dose}mg
-          </div>
-        `
-        if (injection.time) {
-          weekRow += `
-            <div style="
-              font-size: 10px;
-              color: #a1a1aa;
-              margin-top: 2px;
-            ">
-              ${injection.time}
-            </div>
-          `
+        // Draw cell
+        ctx.strokeRect(x, y, cellWidth, cellHeight)
+        
+        // Calculate day number
+        const dayNum = week * 7 + day - startDayOfWeek + 1
+        
+        if (dayNum > 0 && dayNum <= daysInMonth) {
+          // Day number
+          ctx.fillStyle = '#ffffff'
+          ctx.font = '16px Arial'
+          ctx.textAlign = 'left'
+          ctx.fillText(dayNum.toString(), x + 10, y + 25)
+          
+          // Check if injection day (simplified logic)
+          const daysSinceStart = Math.floor((now.getTime() - new Date(settings?.protocolStartDate || now).getTime()) / (1000 * 60 * 60 * 24))
+          const protocolDays = protocol === 'Daily' ? 1 : protocol === 'E2D' ? 2 : protocol === 'E3D' ? 3 : 7
+          const isInjectionDay = (daysSinceStart + dayNum - now.getDate()) % protocolDays === 0
+          
+          if (isInjectionDay) {
+            ctx.fillStyle = '#fbbf24'
+            ctx.fillRect(x + 5, y + cellHeight - 25, cellWidth - 10, 20)
+            ctx.fillStyle = '#000000'
+            ctx.font = '12px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillText('Injection', x + cellWidth/2, y + cellHeight - 10)
+          }
         }
       }
-
-      weekRow += '</td>'
-
-      // Start new row after Saturday
-      if (dayOfWeek === 6) {
-        html += weekRow + '</tr>'
-        weekRow = '<tr>'
-      }
-    })
-
-    // Close any incomplete week row
-    if (weekRow !== '<tr>') {
-      // Fill remaining cells
-      const lastDayOfWeek = getDay(monthEnd)
-      for (let i = lastDayOfWeek + 1; i < 7; i++) {
-        weekRow += '<td style="padding: 8px; border: 1px solid #3f3f46;"></td>'
-      }
-      html += weekRow + '</tr>'
     }
 
-    html += `
-        </tbody>
-      </table>
-      
-      <div style="
-        margin-top: 30px;
-        padding: 20px;
-        background-color: #18181b;
-        border: 1px solid #3f3f46;
-        border-radius: 8px;
-      ">
-        <h3 style="
-          font-size: 16px;
-          font-weight: bold;
-          color: #f59e0b;
-          margin-bottom: 10px;
-        ">Legend</h3>
-        
-        <div style="display: flex; gap: 20px; font-size: 14px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="
-              width: 20px;
-              height: 20px;
-              background-color: #1e293b;
-              border: 1px solid #f59e0b;
-            "></div>
-            <span style="color: #a1a1aa;">Injection Day</span>
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="
-              width: 20px;
-              height: 20px;
-              background-color: #27272a;
-              border: 1px solid #3f3f46;
-            "></div>
-            <span style="color: #a1a1aa;">Scheduled Day</span>
-          </div>
-        </div>
-      </div>
-      
-      <div style="
-        margin-top: 20px;
-        text-align: center;
-        font-size: 12px;
-        color: #71717a;
-      ">
-        Generated on ${format(new Date(), 'PPP')}
-      </div>
-    </div>
-    `
+    // Legend
+    ctx.fillStyle = '#888888'
+    ctx.font = '12px Arial'
+    ctx.textAlign = 'left'
+    ctx.fillText('Yellow = Injection Day', 50, height - 30)
 
-    return html
+    return canvas
   }
 
   const handleExportPNG = async () => {
     setIsExporting(true)
     try {
-      // Create temporary container
-      const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = createSimpleCalendarHTML()
-      tempDiv.style.position = 'absolute'
-      tempDiv.style.left = '-9999px'
-      tempDiv.style.top = '0'
-      document.body.appendChild(tempDiv)
-
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Capture the element
-      const dataUrl = await domToPng(tempDiv.firstElementChild as HTMLElement, {
-        scale: 2,
-        backgroundColor: '#0a0a0a'
-      })
-
-      // Clean up
-      document.body.removeChild(tempDiv)
-
-      // Download
-      const link = document.createElement('a')
-      link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
-      link.href = dataUrl
-      link.click()
+      const canvas = drawCalendarOnCanvas()
+      
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (!blob) throw new Error('Failed to create image')
+        
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
+        link.href = url
+        link.click()
+        URL.revokeObjectURL(url)
+      }, 'image/png')
     } catch (error) {
-      console.error('Export PNG error:', error)
-      alert('Failed to export calendar as PNG')
+      console.error('Export error:', error)
+      alert('Failed to export calendar')
     } finally {
       setIsExporting(false)
       setIsOpen(false)
@@ -286,55 +161,20 @@ export default function ExportMenu({}: ExportMenuProps) {
   const handleExportPDF = async () => {
     setIsExporting(true)
     try {
-      // Create temporary container
-      const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = createSimpleCalendarHTML()
-      tempDiv.style.position = 'absolute'
-      tempDiv.style.left = '-9999px'
-      tempDiv.style.top = '0'
-      document.body.appendChild(tempDiv)
-
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Capture the element
-      const dataUrl = await domToPng(tempDiv.firstElementChild as HTMLElement, {
-        scale: 2,
-        backgroundColor: '#0a0a0a'
-      })
-
-      // Clean up
-      document.body.removeChild(tempDiv)
-
-      // Create PDF
+      const canvas = drawCalendarOnCanvas()
+      const imgData = canvas.toDataURL('image/png')
+      
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'px',
-        format: 'a4'
+        format: [canvas.width, canvas.height]
       })
-
-      const img = new Image()
-      img.src = dataUrl
       
-      await new Promise((resolve) => {
-        img.onload = resolve
-      })
-
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = img.width
-      const imgHeight = img.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const width = imgWidth * ratio
-      const height = imgHeight * ratio
-      const x = (pdfWidth - width) / 2
-      const y = (pdfHeight - height) / 2
-
-      pdf.addImage(dataUrl, 'PNG', x, y, width, height)
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
       pdf.save(`trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
     } catch (error) {
-      console.error('Export PDF error:', error)
-      alert('Failed to export calendar as PDF')
+      console.error('Export error:', error)
+      alert('Failed to export calendar')
     } finally {
       setIsExporting(false)
       setIsOpen(false)
@@ -342,7 +182,7 @@ export default function ExportMenu({}: ExportMenuProps) {
   }
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={dropdownRef} className="relative" data-export-button>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative px-6 py-3 bg-zinc-950 border border-amber-500/30 rounded-xl
@@ -369,12 +209,6 @@ export default function ExportMenu({}: ExportMenuProps) {
           <div className="bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
             
-            <div className="absolute inset-0 opacity-[0.015] pointer-events-none"
-                 style={{
-                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
-                 }}
-            />
-            
             <div className="relative p-2">
               <button
                 onClick={handleExportPNG}
@@ -389,7 +223,7 @@ export default function ExportMenu({}: ExportMenuProps) {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="text-sm font-medium text-zinc-200">Export as PNG</p>
-                  <p className="text-xs text-zinc-500">High-quality image</p>
+                  <p className="text-xs text-zinc-500">Download calendar image</p>
                 </div>
               </button>
               
@@ -406,7 +240,7 @@ export default function ExportMenu({}: ExportMenuProps) {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="text-sm font-medium text-zinc-200">Export as PDF</p>
-                  <p className="text-xs text-zinc-500">Printable document</p>
+                  <p className="text-xs text-zinc-500">Download calendar PDF</p>
                 </div>
               </button>
             </div>
