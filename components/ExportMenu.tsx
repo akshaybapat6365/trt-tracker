@@ -2,12 +2,22 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Download, FileImage, FileText, ChevronDown } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns'
 import { domToPng } from 'modern-screenshot'
 import { jsPDF } from 'jspdf'
 
 interface ExportMenuProps {
   currentProtocol?: string
+}
+
+interface StoredData {
+  injections: Array<{
+    date: string
+    dose: string
+    time: string
+    notes: string
+  }>
+  selectedDays: string[]
 }
 
 export default function ExportMenu({}: ExportMenuProps) {
@@ -31,16 +41,235 @@ export default function ExportMenu({}: ExportMenuProps) {
     }
   }, [isOpen])
 
+  const createSimpleCalendarHTML = () => {
+    // Get current date and stored data
+    const now = new Date()
+    const monthStart = startOfMonth(now)
+    const monthEnd = endOfMonth(now)
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
+    
+    // Get data from localStorage
+    const storedData = localStorage.getItem('trtData')
+    const data: StoredData = storedData ? JSON.parse(storedData) : { injections: [], selectedDays: [] }
+    
+    // Create injection map for quick lookup
+    const injectionMap = new Map()
+    data.injections.forEach(injection => {
+      injectionMap.set(injection.date, injection)
+    })
+
+    // Build HTML
+    let html = `
+      <div style="
+        width: 800px;
+        padding: 40px;
+        background-color: #0a0a0a;
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+      ">
+        <h1 style="
+          font-size: 24px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 30px;
+          color: #f59e0b;
+        ">
+          TRT Calendar - ${format(now, 'MMMM yyyy')}
+        </h1>
+        
+        <table style="
+          width: 100%;
+          border-collapse: collapse;
+          background-color: #18181b;
+          border: 1px solid #3f3f46;
+        ">
+          <thead>
+            <tr>
+    `
+
+    // Add day headers
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    dayNames.forEach(day => {
+      html += `
+        <th style="
+          padding: 12px;
+          text-align: center;
+          font-size: 14px;
+          font-weight: normal;
+          color: #a1a1aa;
+          border-bottom: 1px solid #3f3f46;
+        ">${day}</th>
+      `
+    })
+
+    html += `
+          </tr>
+        </thead>
+        <tbody>
+    `
+
+    // Add calendar days
+    let weekRow = '<tr>'
+    const firstDayOfWeek = getDay(monthStart)
+    
+    // Add empty cells for days before month start
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      weekRow += '<td style="padding: 8px; border: 1px solid #3f3f46;"></td>'
+    }
+
+    days.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd')
+      const injection = injectionMap.get(dateStr)
+      const isSelected = data.selectedDays.includes(String(day.getDate()))
+      const dayOfWeek = getDay(day)
+
+      let cellStyle = `
+        padding: 8px;
+        border: 1px solid #3f3f46;
+        text-align: center;
+        vertical-align: top;
+        height: 80px;
+        position: relative;
+      `
+
+      if (injection) {
+        cellStyle += `background-color: #1e293b;`
+      } else if (isSelected) {
+        cellStyle += `background-color: #27272a;`
+      }
+
+      weekRow += `<td style="${cellStyle}">`
+      
+      // Day number
+      weekRow += `<div style="
+        font-size: 14px;
+        font-weight: ${injection ? 'bold' : 'normal'};
+        color: ${injection ? '#f59e0b' : '#ffffff'};
+        margin-bottom: 4px;
+      ">${day.getDate()}</div>`
+
+      // Injection info
+      if (injection) {
+        weekRow += `
+          <div style="
+            font-size: 11px;
+            color: #fbbf24;
+            margin-top: 4px;
+          ">
+            ${injection.dose}mg
+          </div>
+        `
+        if (injection.time) {
+          weekRow += `
+            <div style="
+              font-size: 10px;
+              color: #a1a1aa;
+              margin-top: 2px;
+            ">
+              ${injection.time}
+            </div>
+          `
+        }
+      }
+
+      weekRow += '</td>'
+
+      // Start new row after Saturday
+      if (dayOfWeek === 6) {
+        html += weekRow + '</tr>'
+        weekRow = '<tr>'
+      }
+    })
+
+    // Close any incomplete week row
+    if (weekRow !== '<tr>') {
+      // Fill remaining cells
+      const lastDayOfWeek = getDay(monthEnd)
+      for (let i = lastDayOfWeek + 1; i < 7; i++) {
+        weekRow += '<td style="padding: 8px; border: 1px solid #3f3f46;"></td>'
+      }
+      html += weekRow + '</tr>'
+    }
+
+    html += `
+        </tbody>
+      </table>
+      
+      <div style="
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #18181b;
+        border: 1px solid #3f3f46;
+        border-radius: 8px;
+      ">
+        <h3 style="
+          font-size: 16px;
+          font-weight: bold;
+          color: #f59e0b;
+          margin-bottom: 10px;
+        ">Legend</h3>
+        
+        <div style="display: flex; gap: 20px; font-size: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="
+              width: 20px;
+              height: 20px;
+              background-color: #1e293b;
+              border: 1px solid #f59e0b;
+            "></div>
+            <span style="color: #a1a1aa;">Injection Day</span>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="
+              width: 20px;
+              height: 20px;
+              background-color: #27272a;
+              border: 1px solid #3f3f46;
+            "></div>
+            <span style="color: #a1a1aa;">Scheduled Day</span>
+          </div>
+        </div>
+      </div>
+      
+      <div style="
+        margin-top: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #71717a;
+      ">
+        Generated on ${format(new Date(), 'PPP')}
+      </div>
+    </div>
+    `
+
+    return html
+  }
+
   const handleExportPNG = async () => {
     setIsExporting(true)
     try {
-      const element = document.getElementById('calendar-container')
-      if (!element) {
-        throw new Error('Calendar element not found')
-      }
+      // Create temporary container
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = createSimpleCalendarHTML()
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.top = '0'
+      document.body.appendChild(tempDiv)
 
-      const dataUrl = await domToPng(element)
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 100))
 
+      // Capture the element
+      const dataUrl = await domToPng(tempDiv.firstElementChild as HTMLElement, {
+        scale: 2,
+        backgroundColor: '#0a0a0a'
+      })
+
+      // Clean up
+      document.body.removeChild(tempDiv)
+
+      // Download
       const link = document.createElement('a')
       link.download = `trt-calendar-${format(new Date(), 'yyyy-MM-dd')}.png`
       link.href = dataUrl
@@ -57,13 +286,27 @@ export default function ExportMenu({}: ExportMenuProps) {
   const handleExportPDF = async () => {
     setIsExporting(true)
     try {
-      const element = document.getElementById('calendar-container')
-      if (!element) {
-        throw new Error('Calendar element not found')
-      }
+      // Create temporary container
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = createSimpleCalendarHTML()
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.top = '0'
+      document.body.appendChild(tempDiv)
 
-      const dataUrl = await domToPng(element)
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 100))
 
+      // Capture the element
+      const dataUrl = await domToPng(tempDiv.firstElementChild as HTMLElement, {
+        scale: 2,
+        backgroundColor: '#0a0a0a'
+      })
+
+      // Clean up
+      document.body.removeChild(tempDiv)
+
+      // Create PDF
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'px',
