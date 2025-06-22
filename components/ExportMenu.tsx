@@ -15,10 +15,8 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
   const [isExporting, setIsExporting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-
-
-  // Create a simplified, export-friendly version of the calendar
-  const createExportableCalendar = () => {
+  // Create a canvas-based calendar drawing function
+  const drawCalendarOnCanvas = (): HTMLCanvasElement => {
     // Get user settings and injection records
     const settings = storage.getUserSettings()
     const records = storage.getInjectionRecords()
@@ -38,110 +36,92 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
       endDate
     )
 
-    // Create a simple HTML structure
-    const container = document.createElement('div')
-    container.style.cssText = `
-      width: 800px;
-      padding: 40px;
-      background-color: #1a1a1a;
-      color: #f5f5f5;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    `
+    // Create canvas
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      throw new Error('Could not get canvas context')
+    }
 
-    // Add header
-    const header = document.createElement('div')
-    header.style.cssText = `
-      text-align: center;
-      margin-bottom: 30px;
-    `
-    header.innerHTML = `
-      <h1 style="font-size: 28px; font-weight: 300; margin: 0; color: #f5f5f5;">
-        TRT Tracker - ${currentProtocol} Protocol
-      </h1>
-      <p style="font-size: 14px; color: #888; margin-top: 10px;">
-        Generated on ${format(new Date(), 'PPP')}
-      </p>
-    `
-    container.appendChild(header)
+    // Canvas settings
+    const canvasWidth = 800
+    const padding = 40
+    const monthSpacing = 50
+    const cellSize = 40
+    const cellPadding = 2
+    
+    // Calculate required height based on number of months
+    const numMonths = 3
+    const monthHeight = 350 // Approximate height per month
+    const headerHeight = 100
+    const legendHeight = 120
+    const canvasHeight = headerHeight + (monthHeight * numMonths) + (monthSpacing * (numMonths - 1)) + legendHeight + (padding * 2)
+    
+    canvas.width = canvasWidth
+    canvas.height = canvasHeight
 
-    // Create calendar for each month
+    // Set up canvas styles
+    ctx.fillStyle = '#1a1a1a'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Draw header
+    ctx.fillStyle = '#f5f5f5'
+    ctx.font = '28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(`TRT Tracker - ${currentProtocol} Protocol`, canvasWidth / 2, padding + 30)
+    
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    ctx.fillStyle = '#888888'
+    ctx.fillText(`Generated on ${format(new Date(), 'PPP')}`, canvasWidth / 2, padding + 55)
+
+    // Draw calendars for each month
+    let yOffset = headerHeight + padding
     const startMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
     
-    for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+    for (let monthOffset = 0; monthOffset < numMonths; monthOffset++) {
       const monthDate = new Date(startMonth)
       monthDate.setMonth(startMonth.getMonth() + monthOffset)
       
-      const monthContainer = document.createElement('div')
-      monthContainer.style.cssText = `
-        margin-bottom: 40px;
-        page-break-inside: avoid;
-      `
-
       // Month header
-      const monthHeader = document.createElement('h2')
-      monthHeader.style.cssText = `
-        font-size: 20px;
-        font-weight: 400;
-        margin-bottom: 15px;
-        color: #f5f5f5;
-      `
-      monthHeader.textContent = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      monthContainer.appendChild(monthHeader)
-
-      // Create table
-      const table = document.createElement('table')
-      table.style.cssText = `
-        width: 100%;
-        border-collapse: collapse;
-        background-color: #2a2a2a;
-        border: 1px solid #3a3a3a;
-      `
-
-      // Add day headers
-      const headerRow = document.createElement('tr')
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-      dayNames.forEach(day => {
-        const th = document.createElement('th')
-        th.style.cssText = `
-          padding: 10px;
-          text-align: center;
-          font-weight: 500;
-          font-size: 12px;
-          color: #888;
-          border: 1px solid #3a3a3a;
-        `
-        th.textContent = day
-        headerRow.appendChild(th)
-      })
-      table.appendChild(headerRow)
-
+      ctx.fillStyle = '#f5f5f5'
+      ctx.font = '20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      ctx.textAlign = 'left'
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      ctx.fillText(monthName, padding, yOffset)
+      
       // Calculate days in month
       const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
       const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0)
       const daysInMonth = lastDay.getDate()
       const startDayOfWeek = firstDay.getDay()
-
-      // Create calendar rows
+      
+      // Draw day headers
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      ctx.fillStyle = '#888888'
+      ctx.textAlign = 'center'
+      
+      const calendarY = yOffset + 30
+      for (let i = 0; i < 7; i++) {
+        const x = padding + (i * (cellSize + cellPadding)) + (cellSize / 2)
+        ctx.fillText(dayNames[i], x, calendarY)
+      }
+      
+      // Draw calendar grid
       let currentDay = 1
+      const cellY = calendarY + 20
+      
       for (let week = 0; week < 6; week++) {
         if (currentDay > daysInMonth) break
-
-        const row = document.createElement('tr')
         
         for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
-          const cell = document.createElement('td')
-          cell.style.cssText = `
-            padding: 15px 10px;
-            text-align: center;
-            border: 1px solid #3a3a3a;
-            height: 60px;
-            vertical-align: top;
-            position: relative;
-          `
-
+          const x = padding + (dayOfWeek * (cellSize + cellPadding))
+          const y = cellY + (week * (cellSize + cellPadding))
+          
+          // Draw cell background
           if (week === 0 && dayOfWeek < startDayOfWeek) {
             // Empty cell before month starts
-            cell.style.backgroundColor = '#1a1a1a'
+            ctx.fillStyle = '#1a1a1a'
           } else if (currentDay <= daysInMonth) {
             const cellDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), currentDay)
             const isInjectionDay = injectionDates.some(d => 
@@ -153,98 +133,113 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
               r.date.toDateString() === cellDate.toDateString()
             )
             const isToday = cellDate.toDateString() === currentDate.toDateString()
-
+            
+            // Cell background
+            ctx.fillStyle = isInjectionDay ? '#3a3a3a' : '#2a2a2a'
+            ctx.fillRect(x, y, cellSize, cellSize)
+            
+            // Cell border
+            ctx.strokeStyle = '#3a3a3a'
+            ctx.lineWidth = 1
+            ctx.strokeRect(x, y, cellSize, cellSize)
+            
             // Day number
-            const dayNumber = document.createElement('div')
-            dayNumber.style.cssText = `
-              font-size: 14px;
-              color: ${isToday ? '#fbbf24' : '#f5f5f5'};
-              margin-bottom: 5px;
-            `
-            dayNumber.textContent = currentDay.toString()
-            cell.appendChild(dayNumber)
-
+            ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+            ctx.fillStyle = isToday ? '#fbbf24' : '#f5f5f5'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'top'
+            ctx.fillText(currentDay.toString(), x + (cellSize / 2), y + 5)
+            
             // Injection indicator
             if (isInjectionDay) {
-              cell.style.backgroundColor = '#3a3a3a'
+              const indicatorY = y + cellSize - 15
+              ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'middle'
               
-              const indicator = document.createElement('div')
-              indicator.style.cssText = `
-                font-size: 11px;
-                padding: 2px 6px;
-                border-radius: 4px;
-                display: inline-block;
-              `
-
               if (record && !record.missed) {
-                indicator.style.backgroundColor = '#10b981'
-                indicator.style.color = '#ffffff'
-                indicator.textContent = '✓ Done'
+                // Done
+                ctx.fillStyle = '#10b981'
+                ctx.fillRect(x + 5, indicatorY - 7, cellSize - 10, 14)
+                ctx.fillStyle = '#ffffff'
+                ctx.fillText('✓ Done', x + (cellSize / 2), indicatorY)
               } else if (record && record.missed) {
-                indicator.style.backgroundColor = '#ef4444'
-                indicator.style.color = '#ffffff'
-                indicator.textContent = '✗ Missed'
+                // Missed
+                ctx.fillStyle = '#ef4444'
+                ctx.fillRect(x + 5, indicatorY - 7, cellSize - 10, 14)
+                ctx.fillStyle = '#ffffff'
+                ctx.fillText('✗ Missed', x + (cellSize / 2), indicatorY)
               } else if (cellDate < currentDate) {
-                indicator.style.backgroundColor = '#f59e0b'
-                indicator.style.color = '#000000'
-                indicator.textContent = '⚠ Log'
+                // Needs logging
+                ctx.fillStyle = '#f59e0b'
+                ctx.fillRect(x + 5, indicatorY - 7, cellSize - 10, 14)
+                ctx.fillStyle = '#000000'
+                ctx.fillText('⚠ Log', x + (cellSize / 2), indicatorY)
               } else {
-                indicator.style.backgroundColor = '#fbbf24'
-                indicator.style.color = '#000000'
-                indicator.textContent = 'Scheduled'
+                // Scheduled
+                ctx.fillStyle = '#fbbf24'
+                ctx.fillRect(x + 5, indicatorY - 7, cellSize - 10, 14)
+                ctx.fillStyle = '#000000'
+                ctx.fillText('Scheduled', x + (cellSize / 2), indicatorY)
               }
-              
-              cell.appendChild(indicator)
             }
-
+            
             currentDay++
           } else {
             // Empty cell after month ends
-            cell.style.backgroundColor = '#1a1a1a'
+            ctx.fillStyle = '#1a1a1a'
+            ctx.fillRect(x, y, cellSize, cellSize)
           }
-
-          row.appendChild(cell)
         }
-        
-        table.appendChild(row)
       }
-
-      monthContainer.appendChild(table)
-      container.appendChild(monthContainer)
+      
+      yOffset += monthHeight + monthSpacing
     }
-
-    // Add legend
-    const legend = document.createElement('div')
-    legend.style.cssText = `
-      margin-top: 30px;
-      padding: 20px;
-      background-color: #2a2a2a;
-      border-radius: 8px;
-    `
-    legend.innerHTML = `
-      <h3 style="font-size: 16px; margin-bottom: 15px; color: #f5f5f5;">Legend</h3>
-      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 60px; padding: 4px 8px; background-color: #fbbf24; color: #000; border-radius: 4px; font-size: 11px; text-align: center;">Scheduled</span>
-          <span style="color: #888; font-size: 12px;">Upcoming injection</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 60px; padding: 4px 8px; background-color: #10b981; color: #fff; border-radius: 4px; font-size: 11px; text-align: center;">✓ Done</span>
-          <span style="color: #888; font-size: 12px;">Completed</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 60px; padding: 4px 8px; background-color: #ef4444; color: #fff; border-radius: 4px; font-size: 11px; text-align: center;">✗ Missed</span>
-          <span style="color: #888; font-size: 12px;">Missed dose</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-block; width: 60px; padding: 4px 8px; background-color: #f59e0b; color: #000; border-radius: 4px; font-size: 11px; text-align: center;">⚠ Log</span>
-          <span style="color: #888; font-size: 12px;">Needs logging</span>
-        </div>
-      </div>
-    `
-    container.appendChild(legend)
-
-    return container
+    
+    // Draw legend
+    const legendY = canvas.height - legendHeight - padding
+    ctx.fillStyle = '#2a2a2a'
+    ctx.fillRect(padding, legendY, canvasWidth - (padding * 2), legendHeight - 20)
+    
+    ctx.fillStyle = '#f5f5f5'
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText('Legend', padding + 20, legendY + 25)
+    
+    // Legend items
+    const legendItems = [
+      { color: '#fbbf24', textColor: '#000000', label: 'Scheduled', description: 'Upcoming injection' },
+      { color: '#10b981', textColor: '#ffffff', label: '✓ Done', description: 'Completed' },
+      { color: '#ef4444', textColor: '#ffffff', label: '✗ Missed', description: 'Missed dose' },
+      { color: '#f59e0b', textColor: '#000000', label: '⚠ Log', description: 'Needs logging' }
+    ]
+    
+    const legendStartX = padding + 20
+    const legendItemY = legendY + 50
+    const legendItemWidth = 160
+    
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    
+    legendItems.forEach((item, index) => {
+      const x = legendStartX + (index % 2) * (legendItemWidth * 2)
+      const y = legendItemY + Math.floor(index / 2) * 30
+      
+      // Color box
+      ctx.fillStyle = item.color
+      ctx.fillRect(x, y - 8, 60, 16)
+      
+      // Label
+      ctx.fillStyle = item.textColor
+      ctx.textAlign = 'center'
+      ctx.fillText(item.label, x + 30, y)
+      
+      // Description
+      ctx.fillStyle = '#888888'
+      ctx.textAlign = 'left'
+      ctx.fillText(item.description, x + 70, y)
+    })
+    
+    return canvas
   }
 
   // Create a text-based calendar for copying
@@ -329,68 +324,11 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of dom-to-image-more
-      let domtoimage
-      try {
-        const domtoimageModule = await import('dom-to-image-more')
-        domtoimage = domtoimageModule.default || domtoimageModule
-      } catch (importError) {
-        console.error('Failed to import dom-to-image-more:', importError)
-        throw new Error('Failed to load export library. Please refresh and try again.')
-      }
-
-      // First try to capture the actual calendar element
-      const calendarContainer = document.querySelector('.calendar-container')
-      let dataUrl = null
+      // Draw calendar using Canvas API
+      const canvas = drawCalendarOnCanvas()
       
-      if (calendarContainer) {
-        try {
-          // Try capturing the actual calendar with better CSS handling
-          dataUrl = await domtoimage.toPng(calendarContainer as HTMLElement, {
-            quality: 1.0,
-            bgcolor: '#1a1a1a',
-            width: (calendarContainer as HTMLElement).offsetWidth,
-            height: (calendarContainer as HTMLElement).offsetHeight,
-            style: {
-              transform: 'scale(1)',
-              transformOrigin: 'top left'
-            }
-          })
-        } catch (actualCalendarError) {
-          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
-        }
-      }
-
-      // If actual calendar capture failed, fall back to simplified version
-      if (!dataUrl) {
-        // Create the simplified calendar element
-        const exportElement = createExportableCalendar()
-
-        // Create a temporary container off-screen
-        const tempContainer = document.createElement('div')
-        tempContainer.style.cssText = `
-          position: fixed !important;
-          left: -9999px !important;
-          top: 0 !important;
-          z-index: -1000 !important;
-        `
-        document.body.appendChild(tempContainer)
-        tempContainer.appendChild(exportElement)
-
-        // Wait for render
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Capture the simplified calendar
-        dataUrl = await domtoimage.toPng(exportElement, {
-          quality: 1.0,
-          bgcolor: '#1a1a1a',
-          width: 800,
-          height: exportElement.offsetHeight
-        })
-
-        // Clean up
-        document.body.removeChild(tempContainer)
-      }
+      // Convert canvas to data URL
+      const dataUrl = canvas.toDataURL('image/png', 1.0)
 
       // Download the image
       const link = document.createElement('a')
@@ -400,7 +338,7 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
     } catch (error) {
       console.error('Export PNG error:', error)
       // Try fallback export method
-      if (confirm('The standard export failed. Would you like to try copying as text instead?')) {
+      if (confirm('The export failed. Would you like to try copying as text instead?')) {
         handleCopyAsText()
       } else if (error instanceof Error) {
         alert(`Failed to export calendar: ${error.message}`)
@@ -445,87 +383,28 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of dom-to-image-more and jsPDF
-      let domtoimage, jsPDF
+      // Dynamic import of jsPDF
+      let jsPDF
       try {
-        const domtoimageModule = await import('dom-to-image-more')
-        domtoimage = domtoimageModule.default || domtoimageModule
-        
         const pdfModule = await import('jspdf')
         jsPDF = pdfModule.default || pdfModule
         
-        // Verify the imports were successful
+        // Verify the import was successful
         if (typeof jsPDF !== 'function') {
           throw new Error('jsPDF is not a function')
         }
       } catch (importError) {
-        console.error('Failed to import export libraries:', importError)
-        throw new Error('Failed to load export libraries. Please refresh and try again.')
+        console.error('Failed to import jsPDF:', importError)
+        throw new Error('Failed to load PDF library. Please refresh and try again.')
       }
 
-      // First try to capture the actual calendar element
-      const calendarContainer = document.querySelector('.calendar-container')
-      let dataUrl = null
-      let width = 800
-      let height = 600
-      
-      if (calendarContainer) {
-        try {
-          // Try capturing the actual calendar with better CSS handling
-          width = (calendarContainer as HTMLElement).offsetWidth
-          height = (calendarContainer as HTMLElement).offsetHeight
-          dataUrl = await domtoimage.toPng(calendarContainer as HTMLElement, {
-            quality: 1.0,
-            bgcolor: '#1a1a1a',
-            width: width,
-            height: height,
-            style: {
-              transform: 'scale(1)',
-              transformOrigin: 'top left'
-            }
-          })
-        } catch (actualCalendarError) {
-          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
-        }
-      }
-
-      // If actual calendar capture failed, fall back to simplified version
-      if (!dataUrl) {
-        // Create the simplified calendar element
-        const exportElement = createExportableCalendar()
-
-        // Create a temporary container off-screen
-        const tempContainer = document.createElement('div')
-        tempContainer.style.cssText = `
-          position: fixed !important;
-          left: -9999px !important;
-          top: 0 !important;
-          z-index: -1000 !important;
-        `
-        document.body.appendChild(tempContainer)
-        tempContainer.appendChild(exportElement)
-
-        // Wait for render
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        width = 800
-        height = exportElement.offsetHeight
-        
-        // Capture the simplified calendar
-        dataUrl = await domtoimage.toPng(exportElement, {
-          quality: 1.0,
-          bgcolor: '#1a1a1a',
-          width: width,
-          height: height
-        })
-
-        // Clean up
-        document.body.removeChild(tempContainer)
-      }
+      // Draw calendar using Canvas API
+      const canvas = drawCalendarOnCanvas()
+      const dataUrl = canvas.toDataURL('image/png', 1.0)
       
       // Calculate PDF dimensions to maintain aspect ratio
       const pdfWidth = 210 // A4 portrait width in mm
-      const pdfHeight = (pdfWidth * height) / width
+      const pdfHeight = (pdfWidth * canvas.height) / canvas.width
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -558,72 +437,19 @@ export default function ExportMenu({ currentProtocol }: ExportMenuProps) {
         throw new Error('Export functionality is only available in the browser')
       }
 
-      // Dynamic import of dom-to-image-more
-      let domtoimage
-      try {
-        const domtoimageModule = await import('dom-to-image-more')
-        domtoimage = domtoimageModule.default || domtoimageModule
-      } catch (importError) {
-        console.error('Failed to import dom-to-image-more:', importError)
-        throw new Error('Failed to load export library. Please refresh and try again.')
-      }
-
-      // First try to capture the actual calendar element
-      const calendarContainer = document.querySelector('.calendar-container')
-      let blob = null
+      // Draw calendar using Canvas API
+      const canvas = drawCalendarOnCanvas()
       
-      if (calendarContainer) {
-        try {
-          // Try capturing the actual calendar with better CSS handling
-          blob = await domtoimage.toBlob(calendarContainer as HTMLElement, {
-            quality: 1.0,
-            bgcolor: '#1a1a1a',
-            width: (calendarContainer as HTMLElement).offsetWidth,
-            height: (calendarContainer as HTMLElement).offsetHeight,
-            style: {
-              transform: 'scale(1)',
-              transformOrigin: 'top left'
-            }
-          })
-        } catch (actualCalendarError) {
-          console.warn('Failed to capture actual calendar, falling back to simplified version:', actualCalendarError)
-        }
-      }
-
-      // If actual calendar capture failed, fall back to simplified version
-      if (!blob) {
-        // Create the simplified calendar element
-        const exportElement = createExportableCalendar()
-
-        // Create a temporary container off-screen
-        const tempContainer = document.createElement('div')
-        tempContainer.style.cssText = `
-          position: fixed !important;
-          left: -9999px !important;
-          top: 0 !important;
-          z-index: -1000 !important;
-        `
-        document.body.appendChild(tempContainer)
-        tempContainer.appendChild(exportElement)
-
-        // Wait for render
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Capture the simplified calendar as blob
-        blob = await domtoimage.toBlob(exportElement, {
-          quality: 1.0,
-          bgcolor: '#1a1a1a',
-          width: 800,
-          height: exportElement.offsetHeight
-        })
-
-        // Clean up
-        document.body.removeChild(tempContainer)
-      }
-
-      if (!blob) {
-        throw new Error('Failed to generate image blob')
-      }
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob)
+          } else {
+            reject(new Error('Failed to generate image blob'))
+          }
+        }, 'image/png', 1.0)
+      })
 
       // Create a temporary link to download the image first
       const url = URL.createObjectURL(blob)
