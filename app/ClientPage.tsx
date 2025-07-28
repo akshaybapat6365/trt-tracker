@@ -11,7 +11,8 @@ import { UserSettings, Protocol, InjectionRecord } from '@/lib/types';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { Settings } from 'lucide-react';
 
-const defaultSettings: UserSettings = {
+// Convert to function to avoid date reset issues
+const getDefaultSettings = (): UserSettings => ({
   protocol: 'E2D',
   concentration: 200,
   syringe: { volume: 1, units: 100, deadSpace: 0.05 },
@@ -20,7 +21,7 @@ const defaultSettings: UserSettings = {
   protocolStartDate: new Date(),
   reminderTime: '08:00',
   enableNotifications: true,
-};
+});
 
 interface ClientPageProps {
   initialData: {
@@ -30,27 +31,72 @@ interface ClientPageProps {
 }
 
 export default function ClientPage({ initialData }: ClientPageProps) {
-  const [settings, setSettings] = useState<UserSettings>(initialData.settings || defaultSettings);
-  const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(initialData.records);
+  // Initialize settings by merging saved data with defaults
+  const [settings, setSettings] = useState<UserSettings>(() => {
+    if (initialData.settings) {
+      // Ensure dates are properly handled
+      return {
+        ...getDefaultSettings(),
+        ...initialData.settings,
+        // Ensure dates are Date objects
+        startDate: initialData.settings.startDate instanceof Date 
+          ? initialData.settings.startDate 
+          : new Date(initialData.settings.startDate),
+        protocolStartDate: initialData.settings.protocolStartDate instanceof Date 
+          ? initialData.settings.protocolStartDate 
+          : new Date(initialData.settings.protocolStartDate)
+      };
+    }
+    return getDefaultSettings();
+  });
+  
+  const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(
+    // Ensure dates in records are properly parsed
+    initialData.records?.map(record => ({
+      ...record,
+      date: record.date instanceof Date ? record.date : new Date(record.date)
+    })) || []
+  );
+  
   const [showDoseCalculator, setShowDoseCalculator] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
 
-  // Save data to Edge Config
+  // Enhanced data saving with validation and error handling
   const saveToCloud = async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
+    if (isSaving) return; // Prevent multiple simultaneous saves
+    
     try {
+      setIsSaving(true);
       console.log('Saving to Edge Config:', { settings: newSettings, records: newRecords });
+      
+      // Validate data before saving
+      if (!newSettings || !newSettings.protocol) {
+        throw new Error('Invalid settings data');
+      }
+      
+      // Ensure dates are valid before saving
+      const dataToSave = {
+        settings: {
+          ...newSettings,
+          // Ensure dates are serializable
+          startDate: newSettings.startDate.toISOString(),
+          protocolStartDate: newSettings.protocolStartDate.toISOString(),
+        },
+        records: newRecords.map(record => ({
+          ...record,
+          date: record.date.toISOString()
+        }))
+      };
       
       const response = await fetch('/api/update-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          settings: newSettings,
-          records: newRecords
-        }),
+        body: JSON.stringify(dataToSave),
       });
 
       const data = await response.json();
@@ -59,9 +105,14 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       if (!response.ok) {
         throw new Error(`Failed to save data: ${data.error || response.statusText}`);
       }
+      
+      // Update refresh key to trigger UI updates
+      setRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Failed to save to Edge Config:', error);
       alert(`Failed to save data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -79,13 +130,28 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   }, []);
 
   const handleSettingsUpdate = async (newSettings: UserSettings) => {
-    setSettings(newSettings);
-    await saveToCloud(newSettings, injectionRecords);
+    // Preserve protocol start date if not explicitly changed
+    const updatedSettings = {
+      ...newSettings,
+      // Ensure we don't lose the original protocol start date unless explicitly changed
+      protocolStartDate: newSettings.protocolStartDate || settings.protocolStartDate
+    };
+    
+    setSettings(updatedSettings);
+    await saveToCloud(updatedSettings, injectionRecords);
     setShowDoseCalculator(false);
   };
 
+  // Improved protocol change to preserve history and start dates
   const handleProtocolChange = async (protocol: Protocol) => {
-    const newSettings = { ...settings, protocol };
+    // Only update the protocol, preserve all other settings including dates
+    const newSettings = { 
+      ...settings, 
+      protocol,
+      // Keep the original protocol start date unless this is initial setup
+      protocolStartDate: settings.protocolStartDate || new Date()
+    };
+    
     setSettings(newSettings);
     await saveToCloud(newSettings, injectionRecords);
   };
