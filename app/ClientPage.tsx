@@ -11,7 +11,7 @@ import { UserSettings, Protocol, InjectionRecord } from '@/lib/types';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { Settings } from 'lucide-react';
 
-// Convert to function to avoid date reset issues
+// Default settings as a function to prevent date reuse issues
 const getDefaultSettings = (): UserSettings => ({
   protocol: 'E2D',
   concentration: 200,
@@ -23,6 +23,16 @@ const getDefaultSettings = (): UserSettings => ({
   enableNotifications: true,
 });
 
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: any): Date => {
+  if (dateValue instanceof Date) return new Date(dateValue);
+  if (typeof dateValue === 'string') {
+    const parsed = new Date(dateValue);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date(); // Fallback to current date if invalid
+};
+
 interface ClientPageProps {
   initialData: {
     settings: UserSettings | null;
@@ -31,32 +41,62 @@ interface ClientPageProps {
 }
 
 export default function ClientPage({ initialData }: ClientPageProps) {
-  // Initialize settings by merging saved data with defaults
+  console.log('ClientPage initializing with data:', initialData);
+  
+  // Simplified settings initialization
   const [settings, setSettings] = useState<UserSettings>(() => {
-    if (initialData.settings) {
-      // Ensure dates are properly handled
-      return {
-        ...getDefaultSettings(),
-        ...initialData.settings,
-        // Ensure dates are Date objects
-        startDate: initialData.settings.startDate instanceof Date 
-          ? initialData.settings.startDate 
-          : new Date(initialData.settings.startDate),
-        protocolStartDate: initialData.settings.protocolStartDate instanceof Date 
-          ? initialData.settings.protocolStartDate 
-          : new Date(initialData.settings.protocolStartDate)
-      };
+    if (!initialData.settings) {
+      console.log('No saved settings found, using defaults');
+      return getDefaultSettings();
     }
-    return getDefaultSettings();
+    
+    try {
+      // Create a clean settings object with properly parsed dates
+      const savedSettings = initialData.settings;
+      console.log('Found saved settings:', savedSettings);
+      
+      const mergedSettings = {
+        ...getDefaultSettings(), // Start with defaults for any missing fields
+        ...savedSettings, // Override with saved values
+        // Explicitly handle dates to avoid serialization issues
+        startDate: safeParseDate(savedSettings.startDate),
+        protocolStartDate: safeParseDate(savedSettings.protocolStartDate)
+      };
+      
+      console.log('Initialized settings with dates:', {
+        startDate: mergedSettings.startDate.toISOString(),
+        protocolStartDate: mergedSettings.protocolStartDate.toISOString()
+      });
+      
+      return mergedSettings;
+    } catch (error) {
+      console.error('Error initializing settings:', error);
+      return getDefaultSettings();
+    }
   });
   
-  const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(
-    // Ensure dates in records are properly parsed
-    initialData.records?.map(record => ({
-      ...record,
-      date: record.date instanceof Date ? record.date : new Date(record.date)
-    })) || []
-  );
+  // Simplified record initialization with safe date parsing
+  const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(() => {
+    try {
+      if (!initialData.records || !Array.isArray(initialData.records)) {
+        console.log('No valid records found');
+        return [];
+      }
+      
+      console.log(`Processing ${initialData.records.length} saved records`);
+      
+      // Parse dates in records and filter out any invalid ones
+      return initialData.records
+        .filter(record => record && record.id && record.date)
+        .map(record => ({
+          ...record,
+          date: safeParseDate(record.date)
+        }));
+    } catch (error) {
+      console.error('Error initializing records:', error);
+      return [];
+    }
+  });
   
   const [showDoseCalculator, setShowDoseCalculator] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -64,24 +104,27 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced data saving with validation and error handling
+  // Simplified data saving with better error handling
   const saveToCloud = async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
-    if (isSaving) return; // Prevent multiple simultaneous saves
+    if (isSaving) {
+      console.log('Save already in progress, skipping');
+      return;
+    }
     
     try {
       setIsSaving(true);
-      console.log('Saving to Edge Config:', { settings: newSettings, records: newRecords });
+      console.log('Starting save to Edge Config');
       
-      // Validate data before saving
+      // Simple validation
       if (!newSettings || !newSettings.protocol) {
         throw new Error('Invalid settings data');
       }
       
-      // Ensure dates are valid before saving
+      // Prepare data for saving - simplify serialization
       const dataToSave = {
         settings: {
           ...newSettings,
-          // Ensure dates are serializable
+          // Only convert dates to strings
           startDate: newSettings.startDate.toISOString(),
           protocolStartDate: newSettings.protocolStartDate.toISOString(),
         },
@@ -91,6 +134,12 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         }))
       };
       
+      console.log('Sending data to API:', {
+        settingsProtocol: dataToSave.settings.protocol,
+        recordCount: dataToSave.records.length,
+        protocolStartDate: dataToSave.settings.protocolStartDate
+      });
+      
       const response = await fetch('/api/update-data', {
         method: 'POST',
         headers: {
@@ -99,18 +148,20 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         body: JSON.stringify(dataToSave),
       });
 
-      const data = await response.json();
-      console.log('Save response:', response.status, data);
-
       if (!response.ok) {
-        throw new Error(`Failed to save data: ${data.error || response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API error response:', response.status, errorData);
+        throw new Error(`Server error: ${errorData.error || response.statusText}`);
       }
       
-      // Update refresh key to trigger UI updates
+      const data = await response.json();
+      console.log('Save successful:', data);
+      
+      // Update UI
       setRefreshKey(prev => prev + 1);
     } catch (error) {
-      console.error('Failed to save to Edge Config:', error);
-      alert(`Failed to save data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Failed to save data:', error);
+      alert(`Failed to save your data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -129,28 +180,46 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Improved settings update to preserve important data
   const handleSettingsUpdate = async (newSettings: UserSettings) => {
-    // Preserve protocol start date if not explicitly changed
+    console.log('Updating settings', {
+      current: settings.protocol,
+      new: newSettings.protocol
+    });
+    
+    // Ensure we preserve the protocol start date unless explicitly changed
     const updatedSettings = {
       ...newSettings,
-      // Ensure we don't lose the original protocol start date unless explicitly changed
-      protocolStartDate: newSettings.protocolStartDate || settings.protocolStartDate
+      protocolStartDate: newSettings.protocolStartDate && 
+                         newSettings.protocolStartDate.getTime() !== settings.protocolStartDate.getTime() 
+        ? newSettings.protocolStartDate  // Use new date if explicitly changed
+        : settings.protocolStartDate     // Keep existing date otherwise
     };
+    
+    console.log('Settings update - preserving dates:', {
+      protocolStartDate: updatedSettings.protocolStartDate.toISOString()
+    });
     
     setSettings(updatedSettings);
     await saveToCloud(updatedSettings, injectionRecords);
     setShowDoseCalculator(false);
   };
 
-  // Improved protocol change to preserve history and start dates
+  // Fixed protocol change logic to preserve history and dates
   const handleProtocolChange = async (protocol: Protocol) => {
-    // Only update the protocol, preserve all other settings including dates
+    console.log('Changing protocol', { from: settings.protocol, to: protocol });
+    
+    // Only update the protocol field, preserve everything else
     const newSettings = { 
-      ...settings, 
+      ...settings,
       protocol,
-      // Keep the original protocol start date unless this is initial setup
-      protocolStartDate: settings.protocolStartDate || new Date()
     };
+    
+    // Log the preserved dates
+    console.log('Protocol change - preserving dates:', {
+      startDate: newSettings.startDate.toISOString(),
+      protocolStartDate: newSettings.protocolStartDate.toISOString()
+    });
     
     setSettings(newSettings);
     await saveToCloud(newSettings, injectionRecords);
@@ -161,6 +230,8 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   };
 
   const handleRecordComplete = async (newRecord: InjectionRecord) => {
+    console.log('Recording injection:', newRecord);
+    
     const updatedRecords = [...injectionRecords];
     const existingIndex = updatedRecords.findIndex(r => r.id === newRecord.id);
     
@@ -170,6 +241,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       updatedRecords.push(newRecord);
     }
     
+    console.log(`Updated records (${updatedRecords.length} total)`);
     setInjectionRecords(updatedRecords);
     await saveToCloud(settings, updatedRecords);
     setSelectedDate(null);
@@ -177,6 +249,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   };
 
   const handleProtocolStartDateChange = async (date: Date) => {
+    console.log('Changing protocol start date:', date.toISOString());
     const newSettings = { ...settings, protocolStartDate: date };
     setSettings(newSettings);
     await saveToCloud(newSettings, injectionRecords);
