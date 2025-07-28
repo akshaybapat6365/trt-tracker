@@ -16,24 +16,6 @@ function safeParseDate(value: unknown): Date | null {
   return isNaN(ts) ? null : new Date(ts)
 }
 
-function isValidSettings(obj: any): obj is UserSettings {
-  if (!obj) return false
-  // Basic integrity checks
-  return typeof obj.protocol === 'string' &&
-    typeof obj.concentration === 'number' &&
-    !!safeParseDate(obj.startDate) &&
-    !!safeParseDate(obj.protocolStartDate)
-}
-
-function isValidRecord(obj: any): obj is InjectionRecord {
-  return obj &&
-    typeof obj.id === 'string' &&
-    typeof obj.dose === 'number' &&
-    typeof obj.missed === 'boolean' &&
-    typeof obj.rescheduled === 'boolean' &&
-    !!safeParseDate(obj.date)
-}
-
 async function getData(): Promise<TRTData> {
   try {
     console.log('Fetching from Edge Config...')
@@ -49,24 +31,31 @@ async function getData(): Promise<TRTData> {
         records: []
       }
     }
-
-    // Validate and transform data defensively
-    const parsedSettings = isValidSettings(data.settings)
-      ? {
-          ...data.settings,
-          startDate: safeParseDate(data.settings!.startDate)!,
-          protocolStartDate: safeParseDate(data.settings!.protocolStartDate)!
-        }
-      : null
+    // -------- Simplified parsing --------
+    let parsedSettings: UserSettings | null = null
+    if (data.settings) {
+      parsedSettings = {
+        ...data.settings,
+        startDate: safeParseDate(data.settings.startDate) || new Date(),
+        protocolStartDate: safeParseDate(data.settings.protocolStartDate) || new Date()
+      }
+    }
 
     const parsedRecords: InjectionRecord[] = Array.isArray(data.records)
       ? data.records
-          .filter(isValidRecord)
-          .map(r => ({ ...r, date: safeParseDate(r.date)! }))
+          .filter(r => r && r.date)               // require a date to exist
+          .map(r => ({
+            ...r,
+            date: safeParseDate(r.date) || new Date()
+          }))
       : []
 
     const cleanData: TRTData = { settings: parsedSettings, records: parsedRecords }
-    console.log('Parsed data:', cleanData)
+    console.log('Loaded TRT data:', {
+      settings: !!cleanData.settings,
+      recordCount: cleanData.records.length
+    })
+
     return cleanData
   } catch (error) {
     console.error('Failed to fetch data from Edge Config:', error)
