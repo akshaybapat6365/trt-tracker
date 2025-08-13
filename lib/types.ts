@@ -15,13 +15,20 @@ export interface SyringeConfiguration {
   deadSpace: number; // in mL
 }
 
-export interface UserSettings {
+// New: Represents the settings for a single protocol
+export interface ProtocolSettings {
   protocol: Protocol;
   concentration: number; // mg/mL
   syringe: SyringeConfiguration;
   syringeFillAmount: number; // How much to fill syringe (0-1, e.g., 0.3 for 30%)
-  startDate: Date;
-  protocolStartDate: Date; // When the user started their TRT protocol
+  startDate: Date; // The date this specific protocol started
+  protocolColor: string; // A color to identify this protocol on the chart
+}
+
+// Updated: UserSettings now contains a history of protocols
+export interface UserSettings {
+  treatmentStartDate: Date; // The very first day of TRT
+  protocols: ProtocolSettings[];
   reminderTime: string; // HH:MM format
   enableNotifications: boolean;
 }
