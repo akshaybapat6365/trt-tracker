@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import MonthlyCalendar from '@/components/MonthlyCalendar';
 import DoseCalculator from '@/components/DoseCalculator';
 import MinimalProtocolSelector from '@/components/MinimalProtocolSelector';
 import RecordInjectionModal from '@/components/RecordInjectionModal';
-import ExportMenu from '@/components/ExportMenu';
-import InjectionChart from '@/components/InjectionChart';
+
+const ExportMenu = dynamic(() => import('@/components/ExportMenu'), { ssr: false });
+const InjectionChart = dynamic(() => import('@/components/InjectionChart'), { ssr: false });
 import { UserSettings, Protocol, InjectionRecord, ProtocolSettings } from '@/lib/types';
+import { TRTDataSchema } from '@/lib/schemas';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { Settings } from 'lucide-react';
+import download from 'downloadjs';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Default settings as a function to prevent date reuse issues
 const getDefaultSettings = (): UserSettings => ({
@@ -26,6 +31,7 @@ const getDefaultSettings = (): UserSettings => ({
   ],
   reminderTime: '08:00',
   enableNotifications: true,
+  notificationPermission: 'default',
 });
 
 // Helper function to safely parse dates
@@ -192,6 +198,24 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     setShowDoseCalculator(false);
   };
 
+  const handleNotificationPermissionRequest = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      const newSettings = { ...settings, notificationPermission: permission };
+      setSettings(newSettings);
+      await saveToCloud(newSettings, injectionRecords);
+    }
+  };
+
+  useEffect(() => {
+    if (settings.notificationPermission === 'granted' && settings.enableNotifications) {
+      // Logic to schedule notifications will go here.
+      // This is a complex task that requires calculating future injection dates
+      // and setting up timers. For now, we'll just log a message.
+      console.log('Notifications are enabled. Scheduling reminders...');
+    }
+  }, [settings.notificationPermission, settings.enableNotifications]);
+
   // Updated to add a new protocol to the history
   const handleProtocolChange = async (protocol: Protocol) => {
     console.log('Changing protocol, adding new entry to history');
@@ -245,6 +269,43 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     setRefreshKey(prev => prev + 1);
   };
 
+  const handleExportData = () => {
+    const dataToExport = {
+      settings,
+      records: injectionRecords,
+    };
+    const json = JSON.stringify(dataToExport, null, 2);
+    download(json, `trt-tracker-backup-${new Date().toISOString()}.json`, 'application/json');
+  };
+
+  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') {
+          throw new Error('File is not a valid text file.');
+        }
+        const jsonData = JSON.parse(text);
+        const parsedData = TRTDataSchema.parse(jsonData);
+
+        if (parsedData.settings) {
+          setSettings(parsedData.settings);
+        }
+        setInjectionRecords(parsedData.records);
+        await saveToCloud(parsedData.settings, parsedData.records);
+        alert('Data imported successfully!');
+      } catch (error) {
+        console.error('Failed to import data:', error);
+        alert(`Failed to import data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const currentProtocol = getCurrentProtocol();
   const calculation = calculateDose(currentProtocol);
   const weeklyDose = calculateWeeklyDose(currentProtocol);
@@ -292,6 +353,8 @@ export default function ClientPage({ initialData }: ClientPageProps) {
                 <div className="flex items-center gap-3 ml-4">
                   <ExportMenu 
                     currentProtocol={currentProtocol.protocol}
+                    onExportData={handleExportData}
+                    onImportData={handleImportData}
                   />
                   
                   <button
@@ -339,27 +402,65 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       </main>
 
       {/* Dose Calculator Modal */}
-      {showDoseCalculator && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop fade-in">
-          <div className="relative w-full max-w-lg transform scale-100 opacity-100 transition-all duration-500">
-            <DoseCalculator
-              settings={currentProtocol}
-              onSettingsUpdate={handleSettingsUpdate}
-              onClose={() => setShowDoseCalculator(false)}
-            />
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showDoseCalculator && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-lg"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="dose-calculator-title"
+            >
+              <DoseCalculator
+                settings={currentProtocol}
+                onSettingsUpdate={handleSettingsUpdate}
+                onClose={() => setShowDoseCalculator(false)}
+                onNotificationPermissionRequest={handleNotificationPermissionRequest}
+                notificationPermission={settings.notificationPermission}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Record Injection Modal */}
-      {selectedDate && (
-        <RecordInjectionModal
-          date={selectedDate}
-          dose={calculation.mgPerInjection}
-          onClose={() => setSelectedDate(null)}
-          onComplete={handleRecordComplete}
-        />
-      )}
+      <AnimatePresence>
+        {selectedDate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="relative w-full max-w-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="record-injection-title"
+            >
+              <RecordInjectionModal
+                date={selectedDate}
+                dose={calculation.mgPerInjection}
+                onClose={() => setSelectedDate(null)}
+                onComplete={handleRecordComplete}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Premium Footer */}
       <footer className="px-4 py-12">

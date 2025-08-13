@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Download, FileImage, FileText, ChevronDown } from 'lucide-react'
+import { Download, FileImage, FileText, ChevronDown, Upload, DownloadCloud } from 'lucide-react'
 import { format } from 'date-fns'
 import { toPng, toJpeg } from 'html-to-image'
 import download from 'downloadjs'
@@ -9,9 +9,11 @@ import { jsPDF } from 'jspdf'
 
 interface ExportMenuProps {
   currentProtocol?: string
+  onExportData: () => void;
+  onImportData: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function ExportMenu({}: ExportMenuProps) {
+export default function ExportMenu({ onExportData, onImportData }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -151,6 +153,40 @@ export default function ExportMenu({}: ExportMenuProps) {
                   <p className="text-xs text-zinc-500">Printable document</p>
                 </div>
               </button>
+
+              <div className="my-2 border-t border-zinc-800" />
+
+              <button
+                onClick={onExportData}
+                className="w-full group relative px-4 py-3 rounded-lg hover:bg-zinc-900/50 transition-all duration-300 flex items-center gap-3"
+              >
+                <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
+                  <DownloadCloud className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-zinc-200">Export All Data</p>
+                  <p className="text-xs text-zinc-500">Save as JSON backup</p>
+                </div>
+              </button>
+              <label
+                htmlFor="import-data"
+                className="w-full group relative px-4 py-3 rounded-lg hover:bg-zinc-900/50 transition-all duration-300 flex items-center gap-3 cursor-pointer"
+              >
+                <div className="p-2 bg-sky-500/10 rounded-lg group-hover:bg-sky-500/20 transition-colors">
+                  <Upload className="w-4 h-4 text-sky-500" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-zinc-200">Import Data</p>
+                  <p className="text-xs text-zinc-500">Load from JSON backup</p>
+                </div>
+                <input
+                  type="file"
+                  id="import-data"
+                  accept=".json"
+                  className="hidden"
+                  onChange={onImportData}
+                />
+              </label>
             </div>
             {isExporting && (
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center rounded-xl">

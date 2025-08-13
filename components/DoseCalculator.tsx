@@ -5,13 +5,17 @@ import { ProtocolSettings, SyringeConfiguration } from '@/lib/types';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { X } from 'lucide-react';
 
+import { Bell } from 'lucide-react';
+
 interface DoseCalculatorProps {
   settings: ProtocolSettings;
   onSettingsUpdate: (settings: ProtocolSettings) => void;
   onClose?: () => void;
+  onNotificationPermissionRequest: () => void;
+  notificationPermission: 'default' | 'granted' | 'denied';
 }
 
-export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: DoseCalculatorProps) {
+export default function DoseCalculator({ settings, onSettingsUpdate, onClose, onNotificationPermissionRequest, notificationPermission }: DoseCalculatorProps) {
   const [localSettings, setLocalSettings] = useState(settings);
   const [fillInput, setFillInput] = useState('');
   const [calculation, setCalculation] = useState(calculateDose(settings));
@@ -103,7 +107,7 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
       {/* Header */}
       <div className="relative p-6 border-b border-zinc-900">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-light text-zinc-100 tracking-wide">Dose Calculator</h2>
+          <h2 id="dose-calculator-title" className="text-2xl font-light text-zinc-100 tracking-wide">Dose Calculator</h2>
           {onClose && (
             <button
               onClick={onClose}
@@ -201,6 +205,40 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
             <p className="text-xs text-zinc-600">
               The start date for this specific protocol.
             </p>
+          </div>
+
+          <div className="pt-6 border-t border-zinc-900">
+            <h3 className="text-sm uppercase tracking-wider text-zinc-500 mb-4">
+              Notifications
+            </h3>
+            <div className="space-y-2">
+              <label className="block text-xs uppercase tracking-wider text-zinc-500">
+                Reminder Time
+              </label>
+              <input
+                type="time"
+                value={localSettings.reminderTime}
+                onChange={(e) => setLocalSettings({
+                  ...localSettings,
+                  reminderTime: e.target.value
+                })}
+                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
+                         text-zinc-200 focus:border-amber-500/30 focus:outline-none
+                         transition-all duration-300"
+              />
+            </div>
+            <button
+              onClick={onNotificationPermissionRequest}
+              disabled={notificationPermission === 'granted'}
+              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
+                       text-zinc-200 hover:border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-all duration-300"
+            >
+              <Bell className="w-4 h-4" />
+              <span>
+                {notificationPermission === 'granted' ? 'Notifications Enabled' : 'Enable Notifications'}
+              </span>
+            </button>
           </div>
 
           <div className="pt-6 border-t border-zinc-900">

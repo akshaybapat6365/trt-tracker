@@ -10,7 +10,11 @@ body {
 }
 
 .glass-card {
-  @apply bg-zinc-900/50 backdrop-blur-lg border border-zinc-800;
+  background: rgba(39, 39, 42, 0.5); /* zinc-900 with 50% opacity */
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .fade-in {
@@ -41,5 +45,7 @@ body {
 }
 
 .modal-backdrop {
-  @apply bg-black/80 backdrop-blur-sm;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
 }

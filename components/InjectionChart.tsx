@@ -1,10 +1,9 @@
 'use client'
 
 import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { format } from 'date-fns'
 import { InjectionRecord, ProtocolSettings } from '@/lib/types'
-import { Bar, Cell } from 'recharts'
 
 interface InjectionChartProps {
   records: InjectionRecord[]

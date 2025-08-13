@@ -55,7 +55,7 @@ export default function RecordInjectionModal({ date, dose, onClose, onComplete }
           <div className="relative p-6 border-b border-zinc-900">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-light text-zinc-100 tracking-wide">Record Injection</h3>
+                <h3 id="record-injection-title" className="text-xl font-light text-zinc-100 tracking-wide">Record Injection</h3>
                 <p className="text-sm text-zinc-500 mt-1">
                   {date.toLocaleDateString('en-US', { 
                     weekday: 'long', 
