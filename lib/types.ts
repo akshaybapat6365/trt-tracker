@@ -31,6 +31,7 @@ export interface UserSettings {
   protocols: ProtocolSettings[];
   reminderTime: string; // HH:MM format
   enableNotifications: boolean;
+  notificationPermission: 'default' | 'granted' | 'denied';
 }
 
 export interface DoseCalculation {

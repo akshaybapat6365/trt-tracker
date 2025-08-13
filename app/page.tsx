@@ -1,24 +1,16 @@
 import { get } from '@vercel/edge-config';
 import ClientPage from './ClientPage';
 import { UserSettings, InjectionRecord, ProtocolSettings } from '@/lib/types';
+import { AnyTRTDataSchema, OldUserSettingsSchema, InjectionRecordSchema } from '@/lib/schemas';
 
 interface TRTData {
   settings: UserSettings | null;
   records: InjectionRecord[];
 }
 
-// Utility: robust date parsing with fallbacks
-function safeParseDate(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date && !isNaN(value as unknown as number)) return value;
-  const str = String(value);
-  const ts = Date.parse(str);
-  return isNaN(ts) ? null : new Date(ts);
-}
-
 // Data migration function
 function migrateSettings(oldSettings: any): UserSettings {
-  const treatmentStartDate = safeParseDate(oldSettings.protocolStartDate) || safeParseDate(oldSettings.startDate) || new Date();
+  const treatmentStartDate = oldSettings.protocolStartDate || oldSettings.startDate || new Date();
 
   const firstProtocol: ProtocolSettings = {
     protocol: oldSettings.protocol || 'E2D',
@@ -34,6 +26,7 @@ function migrateSettings(oldSettings: any): UserSettings {
     protocols: [firstProtocol],
     reminderTime: oldSettings.reminderTime || '08:00',
     enableNotifications: oldSettings.enableNotifications !== undefined ? oldSettings.enableNotifications : true,
+    notificationPermission: 'default',
   };
 }
 
@@ -41,51 +34,47 @@ function migrateSettings(oldSettings: any): UserSettings {
 async function getData(): Promise<TRTData> {
   try {
     console.log('Fetching from Edge Config...');
-    const data = await get<any>('trtData'); // Fetch as 'any' to handle old and new structure
+    const data = await get('trtData');
     console.log('Edge Config data:', data);
 
     if (!data) {
-      console.log('No data found in Edge Config');
+        console.log('No data found in Edge Config');
+        return { settings: null, records: [] };
+    }
+
+    const parsed = AnyTRTDataSchema.safeParse(data);
+
+    if (!parsed.success) {
+      console.error('Zod validation failed:', parsed.error);
       return { settings: null, records: [] };
     }
 
-    let parsedSettings: UserSettings | null = null;
-    if (data.settings) {
-      // Check if data needs migration
-      if (!data.settings.protocols) {
+    const rawData = parsed.data;
+    let finalSettings: UserSettings | null = null;
+
+    if (rawData.settings) {
+      // Check if settings are in the old format
+      if ('protocol' in rawData.settings) {
         console.log('Old settings format detected, migrating...');
-        parsedSettings = migrateSettings(data.settings);
+        const oldSettings = OldUserSettingsSchema.parse(rawData.settings);
+        finalSettings = migrateSettings(oldSettings);
       } else {
-        // New format, just parse dates
-        parsedSettings = {
-          ...data.settings,
-          treatmentStartDate: safeParseDate(data.settings.treatmentStartDate) || new Date(),
-          protocols: data.settings.protocols.map((p: any) => ({
-            ...p,
-            startDate: safeParseDate(p.startDate) || new Date(),
-          })),
-        };
+        finalSettings = rawData.settings as UserSettings;
       }
     }
 
-    const parsedRecords: InjectionRecord[] = Array.isArray(data.records)
-      ? data.records
-          .filter(r => r && r.date)
-          .map(r => ({
-            ...r,
-            date: safeParseDate(r.date) || new Date(),
-          }))
-      : [];
+    const finalRecords = (Array.isArray(rawData.records) ? rawData.records : [])
+      .map(r => {
+        const recordParse = InjectionRecordSchema.safeParse(r);
+        return recordParse.success ? recordParse.data : null;
+      })
+      .filter((r): r is InjectionRecord => r !== null);
 
-    const cleanData: TRTData = { settings: parsedSettings, records: parsedRecords };
-    console.log('Loaded TRT data:', {
-      settings: !!cleanData.settings,
-      recordCount: cleanData.records.length,
-    });
 
-    return cleanData;
+    return { settings: finalSettings, records: finalRecords };
+
   } catch (error) {
-    console.error('Failed to fetch data from Edge Config:', error);
+    console.error('Failed to fetch or parse data from Edge Config:', error);
     return { settings: null, records: [] };
   }
 }
