@@ -7,18 +7,23 @@ import MinimalProtocolSelector from '@/components/MinimalProtocolSelector';
 import RecordInjectionModal from '@/components/RecordInjectionModal';
 import ExportMenu from '@/components/ExportMenu';
 import InjectionChart from '@/components/InjectionChart';
-import { UserSettings, Protocol, InjectionRecord } from '@/lib/types';
+import { UserSettings, Protocol, InjectionRecord, ProtocolSettings } from '@/lib/types';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { Settings } from 'lucide-react';
 
 // Default settings as a function to prevent date reuse issues
 const getDefaultSettings = (): UserSettings => ({
-  protocol: 'E2D',
-  concentration: 200,
-  syringe: { volume: 1, units: 100, deadSpace: 0.05 },
-  syringeFillAmount: 0.3,
-  startDate: new Date(),
-  protocolStartDate: new Date(),
+  treatmentStartDate: new Date(),
+  protocols: [
+    {
+      protocol: 'E2D',
+      concentration: 200,
+      syringe: { volume: 1, units: 100, deadSpace: 0.05 },
+      syringeFillAmount: 0.3,
+      startDate: new Date(),
+      protocolColor: '#FFC107',
+    },
+  ],
   reminderTime: '08:00',
   enableNotifications: true,
 });
@@ -33,6 +38,17 @@ const safeParseDate = (dateValue: any): Date => {
   return new Date(); // Fallback to current date if invalid
 };
 
+// Helper to generate a random color for new protocols
+const getRandomColor = () => {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
+
+
 interface ClientPageProps {
   initialData: {
     settings: UserSettings | null;
@@ -42,39 +58,16 @@ interface ClientPageProps {
 
 export default function ClientPage({ initialData }: ClientPageProps) {
   console.log('ClientPage initializing with data:', initialData);
-  
-  // Simplified settings initialization
+
   const [settings, setSettings] = useState<UserSettings>(() => {
     if (!initialData.settings) {
       console.log('No saved settings found, using defaults');
       return getDefaultSettings();
     }
-    
-    try {
-      // Create a clean settings object with properly parsed dates
-      const savedSettings = initialData.settings;
-      console.log('Found saved settings:', savedSettings);
-      
-      const mergedSettings = {
-        ...getDefaultSettings(), // Start with defaults for any missing fields
-        ...savedSettings, // Override with saved values
-        // Explicitly handle dates to avoid serialization issues
-        startDate: safeParseDate(savedSettings.startDate),
-        protocolStartDate: safeParseDate(savedSettings.protocolStartDate)
-      };
-      
-      console.log('Initialized settings with dates:', {
-        startDate: mergedSettings.startDate.toISOString(),
-        protocolStartDate: mergedSettings.protocolStartDate.toISOString()
-      });
-      
-      return mergedSettings;
-    } catch (error) {
-      console.error('Error initializing settings:', error);
-      return getDefaultSettings();
-    }
+    // Data from page.tsx is already parsed and migrated
+    return initialData.settings;
   });
-  
+
   // Simplified record initialization with safe date parsing
   const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(() => {
     try {
@@ -104,6 +97,12 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
 
+  // Helper to get the current protocol
+  const getCurrentProtocol = (): ProtocolSettings => {
+    // The last protocol in the array is the current one
+    return settings.protocols[settings.protocols.length - 1];
+  };
+
   // Simplified data saving with better error handling
   const saveToCloud = async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
     if (isSaving) {
@@ -116,7 +115,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       console.log('Starting save to Edge Config');
       
       // Simple validation
-      if (!newSettings || !newSettings.protocol) {
+      if (!newSettings || !newSettings.protocols || newSettings.protocols.length === 0) {
         throw new Error('Invalid settings data');
       }
       
@@ -124,9 +123,11 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       const dataToSave = {
         settings: {
           ...newSettings,
-          // Only convert dates to strings
-          startDate: newSettings.startDate.toISOString(),
-          protocolStartDate: newSettings.protocolStartDate.toISOString(),
+          treatmentStartDate: newSettings.treatmentStartDate.toISOString(),
+          protocols: newSettings.protocols.map(p => ({
+            ...p,
+            startDate: p.startDate.toISOString(),
+          })),
         },
         records: newRecords.map(record => ({
           ...record,
@@ -135,9 +136,8 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       };
       
       console.log('Sending data to API:', {
-        settingsProtocol: dataToSave.settings.protocol,
+        protocolsCount: dataToSave.settings.protocols.length,
         recordCount: dataToSave.records.length,
-        protocolStartDate: dataToSave.settings.protocolStartDate
       });
       
       const response = await fetch('/api/update-data', {
@@ -180,46 +180,34 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Improved settings update to preserve important data
-  const handleSettingsUpdate = async (newSettings: UserSettings) => {
-    console.log('Updating settings', {
-      current: settings.protocol,
-      new: newSettings.protocol
-    });
+  // Updated to handle ProtocolSettings
+  const handleSettingsUpdate = async (updatedProtocolSettings: ProtocolSettings) => {
+    console.log('Updating current protocol settings');
     
-    // Ensure we preserve the protocol start date unless explicitly changed
-    const updatedSettings = {
-      ...newSettings,
-      protocolStartDate: newSettings.protocolStartDate && 
-                         newSettings.protocolStartDate.getTime() !== settings.protocolStartDate.getTime() 
-        ? newSettings.protocolStartDate  // Use new date if explicitly changed
-        : settings.protocolStartDate     // Keep existing date otherwise
-    };
+    const newSettings = { ...settings };
+    newSettings.protocols[newSettings.protocols.length - 1] = updatedProtocolSettings;
     
-    console.log('Settings update - preserving dates:', {
-      protocolStartDate: updatedSettings.protocolStartDate.toISOString()
-    });
-    
-    setSettings(updatedSettings);
-    await saveToCloud(updatedSettings, injectionRecords);
+    setSettings(newSettings);
+    await saveToCloud(newSettings, injectionRecords);
     setShowDoseCalculator(false);
   };
 
-  // Fixed protocol change logic to preserve history and dates
+  // Updated to add a new protocol to the history
   const handleProtocolChange = async (protocol: Protocol) => {
-    console.log('Changing protocol', { from: settings.protocol, to: protocol });
+    console.log('Changing protocol, adding new entry to history');
     
-    // Only update the protocol field, preserve everything else
-    const newSettings = { 
-      ...settings,
-      protocol,
+    const currentProtocol = getCurrentProtocol();
+    const newProtocol: ProtocolSettings = {
+      ...currentProtocol,
+      protocol: protocol,
+      startDate: new Date(), // New protocol starts now
+      protocolColor: getRandomColor(),
     };
-    
-    // Log the preserved dates
-    console.log('Protocol change - preserving dates:', {
-      startDate: newSettings.startDate.toISOString(),
-      protocolStartDate: newSettings.protocolStartDate.toISOString()
-    });
+
+    const newSettings = {
+      ...settings,
+      protocols: [...settings.protocols, newProtocol],
+    };
     
     setSettings(newSettings);
     await saveToCloud(newSettings, injectionRecords);
@@ -249,15 +237,17 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   };
 
   const handleProtocolStartDateChange = async (date: Date) => {
-    console.log('Changing protocol start date:', date.toISOString());
-    const newSettings = { ...settings, protocolStartDate: date };
+    console.log('Changing current protocol start date:', date.toISOString());
+    const newSettings = { ...settings };
+    newSettings.protocols[newSettings.protocols.length - 1].startDate = date;
     setSettings(newSettings);
     await saveToCloud(newSettings, injectionRecords);
     setRefreshKey(prev => prev + 1);
   };
 
-  const calculation = calculateDose(settings);
-  const weeklyDose = calculateWeeklyDose(settings);
+  const currentProtocol = getCurrentProtocol();
+  const calculation = calculateDose(currentProtocol);
+  const weeklyDose = calculateWeeklyDose(currentProtocol);
 
   return (
     <div className="min-h-screen bg-zinc-950 relative">
@@ -277,7 +267,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
                   TRT <span className="text-amber-500">Tracker</span>
                 </h1>
                 <MinimalProtocolSelector
-                  currentProtocol={settings.protocol}
+                  currentProtocol={currentProtocol.protocol}
                   onProtocolChange={handleProtocolChange}
                 />
               </div>
@@ -301,7 +291,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
                 
                 <div className="flex items-center gap-3 ml-4">
                   <ExportMenu 
-                    currentProtocol={settings.protocol}
+                    currentProtocol={currentProtocol.protocol}
                   />
                   
                   <button
@@ -333,7 +323,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         <div id="calendar-container" className="card-premium p-8 fade-in-up shadow-premium-hover" style={{ animationDelay: '0.2s' }}>
           <MonthlyCalendar 
             key={refreshKey}
-            settings={settings}
+            settings={currentProtocol}
             records={injectionRecords}
             onDateClick={handleDateClick}
             onProtocolStartDateChange={handleProtocolStartDateChange}
@@ -343,7 +333,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         {/* Injection History Chart */}
         {injectionRecords.length > 0 && (
           <div className="mt-8 fade-in-up" style={{ animationDelay: '0.4s' }}>
-            <InjectionChart records={injectionRecords} />
+            <InjectionChart records={injectionRecords} protocols={settings.protocols} />
           </div>
         )}
       </main>
@@ -353,7 +343,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop fade-in">
           <div className="relative w-full max-w-lg transform scale-100 opacity-100 transition-all duration-500">
             <DoseCalculator
-              settings={settings}
+              settings={currentProtocol}
               onSettingsUpdate={handleSettingsUpdate}
               onClose={() => setShowDoseCalculator(false)}
             />

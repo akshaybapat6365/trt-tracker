@@ -3,24 +3,39 @@
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format } from 'date-fns'
-import { InjectionRecord } from '@/lib/types'
+import { InjectionRecord, ProtocolSettings } from '@/lib/types'
+import { Bar, Cell } from 'recharts'
 
 interface InjectionChartProps {
   records: InjectionRecord[]
+  protocols: ProtocolSettings[]
 }
 
-export default function InjectionChart({ records }: InjectionChartProps) {
+export default function InjectionChart({ records, protocols }: InjectionChartProps) {
+  // Function to find which protocol was active on a given date
+  const getProtocolForDate = (date: Date): ProtocolSettings | undefined => {
+    return protocols
+      .slice()
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      .find(p => new Date(date) >= new Date(p.startDate))
+  }
+
   // Transform injection records into chart data
   const chartData = records
     .filter(record => !record.missed) // Only show completed injections
     .sort((a, b) => a.date.getTime() - b.date.getTime()) // Sort by date
+    .map(record => {
+      const protocol = getProtocolForDate(record.date)
+      return {
+        date: format(record.date, 'MMM dd'),
+        fullDate: format(record.date, 'PPP'),
+        dose: record.dose,
+        notes: record.notes || '',
+        protocolName: protocol ? protocol.protocol : 'Unknown',
+        color: protocol ? protocol.protocolColor : '#8884d8',
+      }
+    })
     .slice(-30) // Show last 30 injections
-    .map(record => ({
-      date: format(record.date, 'MMM dd'),
-      fullDate: format(record.date, 'PPP'),
-      dose: record.dose,
-      notes: record.notes || '',
-    }))
 
   if (chartData.length === 0) {
     return (
@@ -37,6 +52,7 @@ export default function InjectionChart({ records }: InjectionChartProps) {
     payload: {
       fullDate: string
       notes: string
+      protocolName: string
     }
   }
   
@@ -48,6 +64,9 @@ export default function InjectionChart({ records }: InjectionChartProps) {
           <p className="text-xs text-amber-500 mt-1">
             Dose: {payload[0].value} mg
           </p>
+          <p className="text-xs text-zinc-400 mt-1">
+            Protocol: {payload[0].payload.protocolName}
+          </p>
           {payload[0].payload.notes && (
             <p className="text-xs text-zinc-400 mt-1">
               Notes: {payload[0].payload.notes}
@@ -58,6 +77,14 @@ export default function InjectionChart({ records }: InjectionChartProps) {
     }
     return null
   }
+
+  // Get unique protocols for the legend
+  const uniqueProtocols = chartData.reduce((acc, item) => {
+    if (!acc.find(p => p.name === item.protocolName)) {
+      acc.push({ name: item.protocolName, color: item.color });
+    }
+    return acc;
+  }, [] as { name: string; color: string }[]);
 
   return (
     <div className="glass-card rounded-2xl p-8">
@@ -103,19 +130,26 @@ export default function InjectionChart({ records }: InjectionChartProps) {
             />
             <Bar
               dataKey="dose"
-              fill="#fbbf24"
               radius={[8, 8, 0, 0]}
               animationDuration={1000}
               animationBegin={0}
-            />
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       <div className="mt-6 flex items-center justify-between text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-amber-500 rounded" />
-          <span className="text-zinc-400">Testosterone Dose</span>
+        <div className="flex items-center gap-4 flex-wrap">
+          {uniqueProtocols.map(p => (
+            <div key={p.name} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: p.color }} />
+              <span className="text-zinc-400">{p.name}</span>
+            </div>
+          ))}
         </div>
         <p className="text-xs text-zinc-500">
           {records.filter(r => !r.missed).length} total injections logged

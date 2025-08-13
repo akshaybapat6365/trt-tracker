@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { InjectionRecord, UserSettings } from '@/lib/types';
+import { InjectionRecord, ProtocolSettings } from '@/lib/types';
 import { calculateDose, formatDose, getAllInjectionDates } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Check, X, AlertTriangle, Calendar, Sparkles } from 'lucide-react';
 
 interface MonthlyCalendarProps {
-  settings: UserSettings;
+  settings: ProtocolSettings;
   records?: InjectionRecord[];
   onDateClick?: (date: Date) => void;
   onProtocolStartDateChange?: (date: Date) => void;
@@ -23,7 +23,7 @@ export default function MonthlyCalendar({ settings, records = [], onDateClick, o
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
     const dates = getAllInjectionDates(
-      settings.protocolStartDate || settings.startDate, 
+      settings.startDate,
       settings.protocol, 
       endDate
     );
@@ -60,8 +60,8 @@ export default function MonthlyCalendar({ settings, records = [], onDateClick, o
   };
 
   const isProtocolStartDate = (date: Date) => {
-    if (!settings.protocolStartDate) return false;
-    return date.toDateString() === new Date(settings.protocolStartDate).toDateString();
+    if (!settings.startDate) return false;
+    return date.toDateString() === new Date(settings.startDate).toDateString();
   };
 
   const isPast = (date: Date) => {

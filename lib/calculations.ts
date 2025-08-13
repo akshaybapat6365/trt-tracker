@@ -1,6 +1,6 @@
-import { Protocol, UserSettings, DoseCalculation, ProtocolSchedule } from './types';
+import { Protocol, ProtocolSettings, DoseCalculation, ProtocolSchedule } from './types';
 
-export function calculateDose(settings: UserSettings): DoseCalculation {
+export function calculateDose(settings: ProtocolSettings): DoseCalculation {
   const { protocol, concentration, syringe, syringeFillAmount } = settings;
   
   // Calculate injections per week based on protocol
@@ -24,7 +24,7 @@ export function calculateDose(settings: UserSettings): DoseCalculation {
   };
 }
 
-export function calculateWeeklyDose(settings: UserSettings): number {
+export function calculateWeeklyDose(settings: ProtocolSettings): number {
   const dose = calculateDose(settings);
   return dose.mgPerInjection * dose.injectionsPerWeek;
 }

@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'export',
+  basePath: '/trt-tracker',
+  images: {
+    unoptimized: true,
+  },
   transpilePackages: ['html2canvas', 'jspdf'],
   webpack: (config) => {
     // Ensure proper handling of canvas-related modules

@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserSettings, SyringeConfiguration } from '@/lib/types';
+import { ProtocolSettings, SyringeConfiguration } from '@/lib/types';
 import { calculateDose, calculateWeeklyDose, formatDose } from '@/lib/calculations';
 import { X } from 'lucide-react';
 
 interface DoseCalculatorProps {
-  settings: UserSettings;
-  onSettingsUpdate: (settings: UserSettings) => void;
+  settings: ProtocolSettings;
+  onSettingsUpdate: (settings: ProtocolSettings) => void;
   onClose?: () => void;
 }
 
@@ -185,21 +185,21 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose }: 
 
           <div className="space-y-2">
             <label className="block text-xs uppercase tracking-wider text-zinc-500">
-              Protocol Start Date
+              Start Date
             </label>
             <input
               type="date"
-              value={localSettings.protocolStartDate ? localSettings.protocolStartDate.toISOString().split('T')[0] : ''}
+              value={localSettings.startDate ? localSettings.startDate.toISOString().split('T')[0] : ''}
               onChange={(e) => setLocalSettings({
                 ...localSettings,
-                protocolStartDate: e.target.value ? new Date(e.target.value) : new Date()
+                startDate: e.target.value ? new Date(e.target.value) : new Date()
               })}
               className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
                        text-zinc-200 focus:border-amber-500/30 focus:outline-none
                        transition-all duration-300"
             />
             <p className="text-xs text-zinc-600">
-              When did you start your TRT protocol? This helps track all past injections.
+              The start date for this specific protocol.
             </p>
           </div>
 
