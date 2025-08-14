@@ -32,6 +32,7 @@ export interface UserSettings {
   reminderTime: string; // HH:MM format
   enableNotifications: boolean;
   notificationPermission: 'default' | 'granted' | 'denied';
+  theme: 'classic' | 'constellation';
 }
 
 export interface DoseCalculation {

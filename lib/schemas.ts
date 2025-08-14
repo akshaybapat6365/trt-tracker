@@ -30,6 +30,7 @@ export const UserSettingsSchema = z.object({
   reminderTime: z.string(),
   enableNotifications: z.boolean(),
   notificationPermission: z.enum(['default', 'granted', 'denied']),
+  theme: z.enum(['classic', 'constellation']),
 });
 
 // Schema for the old UserSettings format for migration

@@ -13,9 +13,11 @@ interface DoseCalculatorProps {
   onClose?: () => void;
   onNotificationPermissionRequest: () => void;
   notificationPermission: 'default' | 'granted' | 'denied';
+  reminderTime: string;
+  onReminderTimeChange: (time: string) => void;
 }
 
-export default function DoseCalculator({ settings, onSettingsUpdate, onClose, onNotificationPermissionRequest, notificationPermission }: DoseCalculatorProps) {
+export default function DoseCalculator({ settings, onSettingsUpdate, onClose, onNotificationPermissionRequest, notificationPermission, reminderTime, onReminderTimeChange }: DoseCalculatorProps) {
   const [localSettings, setLocalSettings] = useState(settings);
   const [fillInput, setFillInput] = useState('');
   const [calculation, setCalculation] = useState(calculateDose(settings));
@@ -217,11 +219,8 @@ export default function DoseCalculator({ settings, onSettingsUpdate, onClose, on
               </label>
               <input
                 type="time"
-                value={localSettings.reminderTime}
-                onChange={(e) => setLocalSettings({
-                  ...localSettings,
-                  reminderTime: e.target.value
-                })}
+                value={reminderTime}
+                onChange={(e) => onReminderTimeChange(e.target.value)}
                 className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl
                          text-zinc-200 focus:border-amber-500/30 focus:outline-none
                          transition-all duration-300"
