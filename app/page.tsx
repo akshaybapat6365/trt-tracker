@@ -27,6 +27,7 @@ function migrateSettings(oldSettings: any): UserSettings {
     reminderTime: oldSettings.reminderTime || '08:00',
     enableNotifications: oldSettings.enableNotifications !== undefined ? oldSettings.enableNotifications : true,
     notificationPermission: 'default',
+    theme: 'classic',
   };
 }
 
