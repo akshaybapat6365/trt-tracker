@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Persisting data
+
+The tracker now stores data in the browser's `localStorage` and syncs it to a Vercel Edge Config.
+To enable cloud sync, define the following environment variables in `.env.local` or in the Vercel dashboard:
+
+```
+EDGE_CONFIG_ID=<your-edge-config-id>
+VERCEL_ACCESS_TOKEN=<token with edge-config write scope>
+```
+
+Without these variables the app will still work locally but data will only be saved in the browser.

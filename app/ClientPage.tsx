@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DoseCalculator from '@/components/DoseCalculator';
 import MinimalProtocolSelector from '@/components/MinimalProtocolSelector';
@@ -56,6 +56,34 @@ const getRandomColor = () => {
   return color;
 };
 
+// Load data from localStorage if available
+const loadLocalData = () => {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('trtData') : null;
+    if (!raw) return { settings: null, records: [] };
+    const parsed = JSON.parse(raw);
+    const validated = TRTDataSchema.safeParse(parsed);
+    if (!validated.success) return { settings: null, records: [] };
+    const { settings, records } = validated.data;
+    return {
+      settings: settings
+        ? {
+            ...settings,
+            treatmentStartDate: safeParseDate(settings.treatmentStartDate),
+            protocols: settings.protocols.map(p => ({
+              ...p,
+              startDate: safeParseDate(p.startDate)
+            }))
+          }
+        : null,
+      records: (records || []).map(r => ({ ...r, date: safeParseDate(r.date) }))
+    };
+  } catch (err) {
+    console.error('Failed to load local data', err);
+    return { settings: null, records: [] };
+  }
+};
+
 
 interface ClientPageProps {
   initialData: {
@@ -65,27 +93,22 @@ interface ClientPageProps {
 }
 
 export default function ClientPage({ initialData }: ClientPageProps) {
-  console.log('ClientPage initializing with data:', initialData);
+  const localData = loadLocalData();
 
   const [settings, setSettings] = useState<UserSettings>(() => {
-    if (!initialData.settings) {
-      console.log('No saved settings found, using defaults');
-      return getDefaultSettings();
-    }
-    // Data from page.tsx is already parsed and migrated
+    if (localData.settings) return localData.settings;
+    if (!initialData.settings) return getDefaultSettings();
     return initialData.settings;
   });
 
   // Simplified record initialization with safe date parsing
   const [injectionRecords, setInjectionRecords] = useState<InjectionRecord[]>(() => {
+    if (localData.records.length > 0) return localData.records;
     try {
       if (!initialData.records || !Array.isArray(initialData.records)) {
-        console.log('No valid records found');
         return [];
       }
-      
-      console.log(`Processing ${initialData.records.length} saved records`);
-      
+
       // Parse dates in records and filter out any invalid ones
       return initialData.records
         .filter(record => record && record.id && record.date)
@@ -112,7 +135,7 @@ export default function ClientPage({ initialData }: ClientPageProps) {
   };
 
   // Simplified data saving with better error handling
-  const saveToCloud = async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
+  const saveToCloud = useCallback(async (newSettings: UserSettings, newRecords: InjectionRecord[]) => {
     if (isSaving) {
       console.log('Save already in progress, skipping');
       return;
@@ -173,7 +196,42 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [isSaving]);
+
+  // Persist to localStorage and sync to Edge Config
+  const initialSave = useRef(true);
+  useEffect(() => {
+    if (initialSave.current) {
+      initialSave.current = false;
+      return;
+    }
+
+    try {
+      const toStore = {
+        settings: {
+          ...settings,
+          treatmentStartDate: settings.treatmentStartDate.toISOString(),
+          protocols: settings.protocols.map(p => ({
+            ...p,
+            startDate: p.startDate.toISOString()
+          }))
+        },
+        records: injectionRecords.map(r => ({
+          ...r,
+          date: r.date.toISOString()
+        }))
+      };
+      localStorage.setItem('trtData', JSON.stringify(toStore));
+    } catch (err) {
+      console.error('Failed to persist data locally', err);
+    }
+
+    const timeout = setTimeout(() => {
+      saveToCloud(settings, injectionRecords);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [settings, injectionRecords, saveToCloud]);
 
   // Premium cursor glow effect
   useEffect(() => {
@@ -196,14 +254,12 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     newSettings.protocols[newSettings.protocols.length - 1] = updatedProtocolSettings;
     
     setSettings(newSettings);
-    await saveToCloud(newSettings, injectionRecords);
     setShowDoseCalculator(false);
   };
 
   const handleReminderTimeChange = async (time: string) => {
     const newSettings = { ...settings, reminderTime: time };
     setSettings(newSettings);
-    await saveToCloud(newSettings, injectionRecords);
   };
 
   const handleNotificationPermissionRequest = async () => {
@@ -211,7 +267,6 @@ export default function ClientPage({ initialData }: ClientPageProps) {
       const permission = await Notification.requestPermission();
       const newSettings = { ...settings, notificationPermission: permission };
       setSettings(newSettings);
-      await saveToCloud(newSettings, injectionRecords);
     }
   };
 
@@ -242,7 +297,6 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     };
     
     setSettings(newSettings);
-    await saveToCloud(newSettings, injectionRecords);
   };
 
   const handleRecordComplete = async (newRecord: InjectionRecord) => {
@@ -259,7 +313,6 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     
     console.log(`Updated records (${updatedRecords.length} total)`);
     setInjectionRecords(updatedRecords);
-    await saveToCloud(settings, updatedRecords);
     setSelectedDate(null);
     setRefreshKey(prev => prev + 1);
   };
@@ -268,7 +321,6 @@ export default function ClientPage({ initialData }: ClientPageProps) {
     const newTheme = settings.theme === 'classic' ? 'constellation' : 'classic';
     const newSettings = { ...settings, theme: newTheme };
     setSettings(newSettings);
-    await saveToCloud(newSettings, injectionRecords);
   };
 
   const handleExportData = () => {
@@ -303,7 +355,6 @@ export default function ClientPage({ initialData }: ClientPageProps) {
 
         setSettings(newSettings);
         setInjectionRecords(newRecords.map(r => ({...r, date: new Date(r.date)}))); // Re-hydrate dates
-        await saveToCloud(newSettings, newRecords);
         alert('Data imported successfully!');
       } catch (error) {
         console.error('Failed to import data:', error);
