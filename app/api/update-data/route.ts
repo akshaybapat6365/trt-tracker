@@ -18,21 +18,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the Edge Config connection details from environment
-    const edgeConfigId = 'ecfg_vc8zkswphwuzysb3785dfnxszcmo'
-    // Prefer environment variable but fall back to user-supplied token so the route
-    // continues to work even if the env is not configured in Vercel dashboard.
-    const token =
-      process.env.VERCEL_ACCESS_TOKEN ||
-      process.env.VERCEL_TOKEN ||
-      'DmaVgTsCOPJgdcfj8ZA5EzAO'
-    
+    const edgeConfigId = process.env.EDGE_CONFIG_ID
+    const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_TOKEN
+
     console.log('API: Token exists:', !!token)
     console.log('API: Edge Config ID:', edgeConfigId)
-    // Basic guard although token will always exist due to fallback above
-    if (!token) {
-      console.error('No access token available – aborting')
+    if (!edgeConfigId || !token) {
+      console.error('Missing Edge Config credentials')
       return NextResponse.json(
-        { error: 'Missing Vercel access token' },
+        { error: 'Missing Edge Config credentials' },
         { status: 500 }
       )
     }
