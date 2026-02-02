@@ -16,7 +16,7 @@
     "downloadjs": "^1.4.7",
     "framer-motion": "^12.23.12",
     "html-to-image": "^1.11.13",
-    "jspdf": "^3.0.1",
+    "jspdf": "^4.1.0",
     "lucide-react": "^0.519.0",
     "next": "15.3.4",
     "p5": "^2.0.4",
